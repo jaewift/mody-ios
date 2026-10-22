@@ -92,7 +92,7 @@ EOF
   cat > XCConfig/DEV.xcconfig <<EOF
 #include "./Shared.xcconfig"
 
-BUNDLE_IDENTIFIER = com.jagsim.mody-dev
+BUNDLE_IDENTIFIER = com.jagsim.mody-develop
 BUNDLE_NAME = MODY DEV
 ENV = Dev
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEV
