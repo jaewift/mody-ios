@@ -28,6 +28,16 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
+    func registerCurrentFCMToken() {
+        Messaging.messaging().token { [weak self] fcmToken, error in
+            guard let fcmToken else {
+                ModyLogger.debug("[FCM] token fetch error: \(String(describing: error))")
+                return
+            }
+            self?.registerFCMToken(fcmToken)
+        }
+    }
+
     func registerFCMToken(_ fcmToken: String) {
         let deviceID = UIDevice.current.identifierForVendor?.uuidString
 

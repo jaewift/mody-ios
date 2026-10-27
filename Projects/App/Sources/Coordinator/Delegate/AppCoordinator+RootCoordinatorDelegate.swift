@@ -6,10 +6,12 @@
 //
 
 import Root
+import UIKit
 
 @MainActor
 extension AppCoordinator: RootCoordinatorDelegate {
     func didFinishAuthentication(_ coordinator: RootCoordinator) {
         showMain(animated: true)
+        (UIApplication.shared.delegate as? AppDelegate)?.registerCurrentFCMToken()
     }
 }
