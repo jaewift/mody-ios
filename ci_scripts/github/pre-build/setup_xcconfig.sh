@@ -71,12 +71,13 @@ create_xcconfigs() {
 
   [[ -n "$raw_api_base_url_dev" ]] || fail "required XCConfig secret/env is missing: API_BASE_URL_DEV"
   [[ -n "$raw_api_base_url_prod" ]] || fail "required XCConfig secret/env is missing: API_BASE_URL_PROD"
-  [[ -n "$amplitude_api_key_dev" ]] || fail "required XCConfig secret/env is missing: AMPLITUDE_API_KEY_DEV"
-  [[ -n "$amplitude_api_key_prod" ]] || fail "required XCConfig secret/env is missing: AMPLITUDE_API_KEY_PROD"
   [[ -n "$kakao_native_app_key_dev" ]] || fail "required XCConfig secret/env is missing: KAKAO_NATIVE_APP_KEY_DEV"
   [[ -n "$kakao_native_app_key_prod" ]] || fail "required XCConfig secret/env is missing: KAKAO_NATIVE_APP_KEY_PROD"
   [[ -n "$kakao_share_template_id_dev" ]] || fail "required XCConfig secret/env is missing: KAKAO_SHARE_TEMPLATE_ID_DEV"
   [[ -n "$kakao_share_template_id_prod" ]] || fail "required XCConfig secret/env is missing: KAKAO_SHARE_TEMPLATE_ID_PROD"
+
+  [[ -n "$amplitude_api_key_dev" ]] || echo "AMPLITUDE_API_KEY_DEV is not set; Amplitude will be disabled for DEV"
+  [[ -n "$amplitude_api_key_prod" ]] || echo "AMPLITUDE_API_KEY_PROD is not set; Amplitude will be disabled for PROD"
 
   api_base_url_dev="$(escape_xcconfig_value "$raw_api_base_url_dev")"
   api_base_url_prod="$(escape_xcconfig_value "$raw_api_base_url_prod")"
@@ -91,7 +92,7 @@ EOF
   cat > XCConfig/DEV.xcconfig <<EOF
 #include "./Shared.xcconfig"
 
-BUNDLE_IDENTIFIER = com.jagsim.mody-dev
+BUNDLE_IDENTIFIER = com.jagsim.mody-develop
 BUNDLE_NAME = MODY DEV
 ENV = Dev
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEV
@@ -143,7 +144,8 @@ done
 if [[ "$dry_run" == true ]]; then
   echo "XCConfig setup dry-run"
   echo "files=XCConfig/Shared.xcconfig XCConfig/DEV.xcconfig XCConfig/PROD.xcconfig XCConfig/RELEASE.xcconfig"
-  echo "required_env=API_BASE_URL_DEV API_BASE_URL_PROD AMPLITUDE_API_KEY_DEV AMPLITUDE_API_KEY_PROD KAKAO_NATIVE_APP_KEY_DEV KAKAO_NATIVE_APP_KEY_PROD KAKAO_SHARE_TEMPLATE_ID_DEV KAKAO_SHARE_TEMPLATE_ID_PROD"
+  echo "required_env=API_BASE_URL_DEV API_BASE_URL_PROD KAKAO_NATIVE_APP_KEY_DEV KAKAO_NATIVE_APP_KEY_PROD KAKAO_SHARE_TEMPLATE_ID_DEV KAKAO_SHARE_TEMPLATE_ID_PROD"
+  echo "optional_env=AMPLITUDE_API_KEY_DEV AMPLITUDE_API_KEY_PROD"
   exit 0
 fi
 
