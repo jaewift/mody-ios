@@ -9,9 +9,14 @@ import CoreAnalyticsInterface
 
 public struct AnalyticsRepository: AnalyticsRepositoryProtocol {
     private let amplitudeService: AmplitudeService
+    private let firebaseAnalyticsService: FirebaseAnalyticsService
 
-    public init(amplitudeService: AmplitudeService) {
+    public init(
+        amplitudeService: AmplitudeService,
+        firebaseAnalyticsService: FirebaseAnalyticsService
+    ) {
         self.amplitudeService = amplitudeService
+        self.firebaseAnalyticsService = firebaseAnalyticsService
     }
 
     public func setUserID(_ userID: String) {
@@ -28,6 +33,10 @@ public struct AnalyticsRepository: AnalyticsRepositoryProtocol {
 
     public func log(_ event: AmplitudeLogEvent) {
         amplitudeService.log(event)
+    }
+
+    public func log(_ event: GoogleAnalyticsEvent) {
+        firebaseAnalyticsService.log(event)
     }
 
     public func viewDidLoad(screenName: String) {

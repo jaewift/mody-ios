@@ -24,8 +24,12 @@ extension AppAssembly {
 
         container.register(AnalyticsRepositoryProtocol.self) { resolver in
             let amplitudeService: AmplitudeService = resolver.resolve()
+            let firebaseAnalyticsService: FirebaseAnalyticsService = resolver.resolve()
 
-            return AnalyticsRepository(amplitudeService: amplitudeService)
+            return AnalyticsRepository(
+                amplitudeService: amplitudeService,
+                firebaseAnalyticsService: firebaseAnalyticsService
+            )
         }
 
         container.register(AnalyticsUseCaseProtocol.self) { resolver in

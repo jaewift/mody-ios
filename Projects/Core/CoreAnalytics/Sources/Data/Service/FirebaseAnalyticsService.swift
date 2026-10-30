@@ -5,6 +5,7 @@
 //  Created by Jaewift on 10/31/26.
 //
 
+import CoreAnalyticsInterface
 import FirebaseAnalytics
 import Foundation
 
@@ -18,6 +19,13 @@ public final class FirebaseAnalyticsService {
         #if DEV
         Analytics.setAnalyticsCollectionEnabled(isDebugViewEnabled)
         #endif
+    }
+
+    func log(_ event: GoogleAnalyticsEvent) {
+        Analytics.logEvent(
+            event.name,
+            parameters: event.parameters.isEmpty ? nil : event.parameters
+        )
     }
 }
 

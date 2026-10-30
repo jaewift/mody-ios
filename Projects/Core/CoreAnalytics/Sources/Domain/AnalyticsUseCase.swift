@@ -30,6 +30,10 @@ public struct AnalyticsUseCase: AnalyticsUseCaseProtocol {
         analyticsRepository.log(event)
     }
 
+    public func log(_ event: GoogleAnalyticsEvent) {
+        analyticsRepository.log(event)
+    }
+
     public func viewDidLoad(screenName: String) {
         analyticsRepository.viewDidLoad(screenName: screenName)
     }

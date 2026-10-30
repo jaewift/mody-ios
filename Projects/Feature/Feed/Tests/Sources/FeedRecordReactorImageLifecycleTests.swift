@@ -188,6 +188,7 @@ private struct FeedRecordAnalyticsUseCaseMock: AnalyticsUseCaseProtocol {
     func setUserNickname(_ nickname: String) {}
     func reset() {}
     func log(_ event: AmplitudeLogEvent) {}
+    func log(_ event: GoogleAnalyticsEvent) {}
     func viewDidLoad(screenName: String) {}
 }
 
