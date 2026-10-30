@@ -299,7 +299,8 @@ public let dependencyInfo: DependencyInfo = DependencyInfo(
         .CoreHealth: .init(),
         .CoreAnalytics: .init(
             implementation: [
-                .external(.AmplitudeSwift)
+                .external(.AmplitudeSwift),
+                .external(.FirebaseAnalyticsCore)
             ]
         )
     ]

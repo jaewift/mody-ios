@@ -28,6 +28,7 @@ public enum ExternalModule {
     case KakaoSDKUser
     case FirebaseCore
     case FirebaseAnalytics
+    case FirebaseAnalyticsCore
     case FirebaseCrashlytics
     case FirebaseMessaging
     case FirebaseRemoteConfig
