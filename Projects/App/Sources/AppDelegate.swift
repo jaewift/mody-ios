@@ -33,6 +33,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         appDependencyContainer.initializeAnalytics()
         DesignSystemFontFamily.registerAllCustomFonts()
+        appDependencyContainer.configureFirebaseAnalyticsCollection()
         FirebaseApp.configure()
         configureNotifications(application)
         configureKakaoSDK()

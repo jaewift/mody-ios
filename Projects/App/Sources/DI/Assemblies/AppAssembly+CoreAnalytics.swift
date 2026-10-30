@@ -17,6 +17,11 @@ extension AppAssembly {
         }
         .inObjectScope(.container)
 
+        container.register(FirebaseAnalyticsService.self) { _ in
+            FirebaseAnalyticsService()
+        }
+        .inObjectScope(.container)
+
         container.register(AnalyticsRepositoryProtocol.self) { resolver in
             let amplitudeService: AmplitudeService = resolver.resolve()
 

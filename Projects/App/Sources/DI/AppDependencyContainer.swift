@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CoreAnalytics
 import CoreAnalyticsInterface
 import CoreModyImageInterface
 import CoreNotificationInterface
@@ -36,5 +37,10 @@ final class AppDependencyContainer {
 extension AppDependencyContainer {
     func initializeAnalytics() {
         let _: AnalyticsUseCaseProtocol = assembler.resolver.resolve()
+    }
+
+    func configureFirebaseAnalyticsCollection() {
+        let firebaseAnalyticsService: FirebaseAnalyticsService = assembler.resolver.resolve()
+        firebaseAnalyticsService.configureCollection()
     }
 }

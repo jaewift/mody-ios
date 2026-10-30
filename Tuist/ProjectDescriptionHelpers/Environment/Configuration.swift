@@ -14,10 +14,16 @@ public extension ConfigurationName {
 
 public extension Array where Element == Configuration {
     static let `default`: [Configuration] = [
-        .debug(name: .dev, xcconfig: .path(.dev)),
-        .debug(name: .prod, xcconfig: .path(.prod)),
-        .release(name: .release, xcconfig: .path(.release))
+        .debug(name: .dev, settings: .analyticsCollection(enabled: false), xcconfig: .path(.dev)),
+        .debug(name: .prod, settings: .analyticsCollection(enabled: true), xcconfig: .path(.prod)),
+        .release(name: .release, settings: .analyticsCollection(enabled: true), xcconfig: .path(.release))
     ]
+}
+
+private extension SettingsDictionary {
+    static func analyticsCollection(enabled: Bool) -> Self {
+        ["FIREBASE_ANALYTICS_COLLECTION_ENABLED": .string(enabled ? "YES" : "NO")]
+    }
 }
 
 private extension ProjectDescription.Path {
