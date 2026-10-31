@@ -275,6 +275,7 @@ private struct TypographyDemoSample: Identifiable {
 private extension ModyTypography {
     var name: String {
         switch self {
+        case .h0: "h0"
         case .h1: "h1"
         case .h2: "h2"
         case .h3: "h3"
@@ -288,6 +289,7 @@ private extension ModyTypography {
         case .c1: "c1"
         case .c2: "c2"
         case .c3: "c3"
+        case .c4: "c4"
         }
     }
 }
