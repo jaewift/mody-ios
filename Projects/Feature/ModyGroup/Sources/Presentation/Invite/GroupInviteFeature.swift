@@ -60,11 +60,16 @@ public struct GroupInviteFeature {
                 guard !state.inviteCode.isEmpty else { return .none }
                 state.isCodeCopied = true
 
-                return .run { send in
-                    try await Task.sleep(for: .seconds(2))
-                    await send(.copyMessageExpired)
-                }
-                .cancellable(id: State.CancelID.copyMessage, cancelInFlight: true)
+                return .merge(
+                    .run { _ in
+                        analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupShareClicked(method: .copy))
+                    },
+                    .run { send in
+                        try await Task.sleep(for: .seconds(2))
+                        await send(.copyMessageExpired)
+                    }
+                    .cancellable(id: State.CancelID.copyMessage, cancelInFlight: true)
+                )
             case .copyMessageExpired:
                 state.isCodeCopied = false
                 return .none
@@ -75,6 +80,7 @@ public struct GroupInviteFeature {
 
                 state.isLoading = true
                 return .run { send in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupShareClicked(method: .kakao))
                     do {
                         try await shareGroupInviteUseCase.shareCodeToKakao(
                             code: inviteCode,
@@ -93,8 +99,12 @@ public struct GroupInviteFeature {
             case .shareFailed:
                 state.isLoading = false
                 return .none
-            case .backButtonTapped, .doneButtonTapped:
+            case .backButtonTapped:
                 return .none
+            case .doneButtonTapped:
+                return .run { _ in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupCreateFinished)
+                }
             }
         }
     }

@@ -138,6 +138,9 @@ public final class FeedViewController: UIViewController, View {
             .compactMap { FeedGroupMenuSheetViewState(state: $0) }
             .observe(on: MainScheduler.instance)
             .bind(with: self) { owner, viewState in
+                guard owner.presentedViewController == nil else { return }
+
+                reactor.action.onNext(.didPresentGroupMenu)
                 owner.presentGroupMenuSheet(
                     groupList: viewState.groupList,
                     selectedGroup: viewState.selectedGroup,

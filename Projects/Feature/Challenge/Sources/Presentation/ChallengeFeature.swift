@@ -110,6 +110,7 @@ private extension ChallengeFeature {
         case let .nudgeCompleted(_, _, nickname):
             return .run { [output] _ in
                 analyticsUseCase.log(ChallengeAnalyticsEvent.nudgeSucceeded)
+                analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.pokeSent)
                 await output(.nudgeSucceeded(nickname: nickname))
             }
         case .showAlert(let error):

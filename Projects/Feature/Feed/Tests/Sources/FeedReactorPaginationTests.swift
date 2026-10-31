@@ -348,6 +348,56 @@ final class FeedReactorPaginationTests: XCTestCase {
         await fulfillment(of: [challengeRouted], timeout: 1)
         XCTAssertEqual(router.routes, [.routeToChallenge])
     }
+
+    func testGroupMenuPresentLogsGroupSelectorClickWithGroupCount() async {
+        let analyticsUseCase = FeedAnalyticsUseCaseSpy()
+        let reactor = makeReactor(
+            feedRepository: FeedPaginationRepositoryMock(pages: [makePage(recordIDs: [1], nextCursor: nil, hasNext: false)]),
+            outputHandler: FeedOutputHandlerSpy(),
+            analyticsUseCase: analyticsUseCase
+        )
+        await loadInitialContent(of: reactor)
+
+        reactor.action.onNext(.didPresentGroupMenu)
+
+        XCTAssertEqual(
+            analyticsUseCase.googleAnalyticsEvents,
+            [GoogleAnalyticsEvent(name: "group_selector_click", parameters: ["group_count": "1"])]
+        )
+    }
+
+    func testAddGroupTapLogsGroupAddClickWithGroupCount() async {
+        let analyticsUseCase = FeedAnalyticsUseCaseSpy()
+        let reactor = makeReactor(
+            feedRepository: FeedPaginationRepositoryMock(pages: [makePage(recordIDs: [1], nextCursor: nil, hasNext: false)]),
+            outputHandler: FeedOutputHandlerSpy(),
+            analyticsUseCase: analyticsUseCase
+        )
+        await loadInitialContent(of: reactor)
+
+        reactor.action.onNext(.didTapAddGroup)
+
+        XCTAssertEqual(
+            analyticsUseCase.googleAnalyticsEvents,
+            [GoogleAnalyticsEvent(name: "group_add_click", parameters: ["group_count": "1"])]
+        )
+    }
+
+    func testNudgeButtonTapLogsPokeCTAClick() {
+        let analyticsUseCase = FeedAnalyticsUseCaseSpy()
+        let reactor = makeReactor(
+            feedRepository: FeedPaginationRepositoryMock(pages: []),
+            outputHandler: FeedOutputHandlerSpy(),
+            analyticsUseCase: analyticsUseCase
+        )
+
+        reactor.action.onNext(.didTapNudgeButton)
+
+        XCTAssertEqual(
+            analyticsUseCase.googleAnalyticsEvents,
+            [GoogleAnalyticsEvent(name: "poke_cta_click")]
+        )
+    }
 }
 
 private extension FeedReactorPaginationTests {
@@ -355,13 +405,14 @@ private extension FeedReactorPaginationTests {
         feedRepository: FeedRepositoryProtocol,
         groupUseCase: GroupUseCaseProtocol = FeedPaginationGroupUseCaseMock(),
         outputHandler: FeedOutputHandler,
-        router: FeedRouter? = nil
+        router: FeedRouter? = nil,
+        analyticsUseCase: AnalyticsUseCaseProtocol = FeedAnalyticsUseCaseMock()
     ) -> FeedReactor {
         FeedReactor(
             authUseCase: FeedPaginationAuthUseCaseMock(),
             groupUseCase: groupUseCase,
             feedUseCase: FeedUseCase(feedRepository: feedRepository),
-            analyticsUseCase: FeedAnalyticsUseCaseMock(),
+            analyticsUseCase: analyticsUseCase,
             router: router ?? FeedPaginationRouterMock(),
             output: { [weak outputHandler] output in
                 outputHandler?.handle(output: output)
@@ -440,6 +491,19 @@ private struct FeedAnalyticsUseCaseMock: AnalyticsUseCaseProtocol {
     func reset() {}
     func log(_ event: AmplitudeLogEvent) {}
     func log(_ event: GoogleAnalyticsEvent) {}
+    func viewDidLoad(screenName: String) {}
+}
+
+private final class FeedAnalyticsUseCaseSpy: AnalyticsUseCaseProtocol {
+    private(set) var googleAnalyticsEvents: [GoogleAnalyticsEvent] = []
+
+    func setUserID(_ userID: String) {}
+    func setUserNickname(_ nickname: String) {}
+    func reset() {}
+    func log(_ event: AmplitudeLogEvent) {}
+    func log(_ event: GoogleAnalyticsEvent) {
+        googleAnalyticsEvents.append(event)
+    }
     func viewDidLoad(screenName: String) {}
 }
 

@@ -278,6 +278,7 @@ private extension ChallengeWeeklyDetailFeature {
                 request: request
             )
             analyticsUseCase.log(ChallengeAnalyticsEvent.weeklyChallengeProofCreated)
+            analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.weeklyChallengeCompleted)
             let imageInfos = try await challengeUseCase.fetchWeeklyChallengeProofs(
                 groupId: groupId,
                 groupChallengeId: groupChallengeId

@@ -76,6 +76,7 @@ public final class FeedReactor: Reactor {
         case didTapFloatingActionButton
         case didTapExerciseRecordButton
         case didTapMealRecordButton
+        case didPresentGroupMenu
         case didTapAddGroup
         case didTapNudgeButton
         case didSelectGroup(GroupModel)
@@ -161,12 +162,21 @@ public final class FeedReactor: Reactor {
             return .just(.setFloatingActionButtonExpanded(false))
         case .didTapFloatingActionButton:
             return .just(.setFloatingActionButtonExpanded(!currentState.isFloatingActionButtonExpanded))
+        case .didPresentGroupMenu:
+            analyticsUseCase.log(
+                FeedGoogleAnalyticsEvent.groupSelectorClicked(groupCount: currentState.groups.count)
+            )
+            return .empty()
         case .didTapAddGroup:
+            analyticsUseCase.log(
+                FeedGoogleAnalyticsEvent.groupAddClicked(groupCount: currentState.groups.count)
+            )
             Task { @MainActor [weak router] in
                 router?.route(from: .addGroup)
             }
             return .empty()
         case .didTapNudgeButton:
+            analyticsUseCase.log(FeedGoogleAnalyticsEvent.pokeCTAClicked)
             Task { @MainActor [weak router] in
                 router?.route(from: .routeToChallenge)
             }
