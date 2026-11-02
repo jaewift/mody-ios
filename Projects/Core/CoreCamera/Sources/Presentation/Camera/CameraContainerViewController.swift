@@ -24,10 +24,14 @@ final class CameraContainerViewController: UIViewController {
     let capturedPhotoProcessor: CameraCapturedPhotoProcessor
 
     let previewView = CameraPreviewView()
+    /// 촬영·선택한 사진을 담는 편집 영역입니다. 사진은 frame 기반으로 배치해 확대·이동합니다.
+    let photoCanvasView = UIView()
     let selectedImageView = UIImageView()
+    let photoPinchGestureRecognizer = UIPinchGestureRecognizer()
+    let photoPanGestureRecognizer = UIPanGestureRecognizer()
     let closeButton = UIButton(type: .system)
     let rotationControlsView = CameraRotationControlsView()
-    private let topControlsStackView = UIStackView()
+    let topControlsStackView = UIStackView()
     private let topControlsSpacerView = UIView()
     let bottomCameraShutterView = BottomCameraShutterView()
     let photoConfirmationContainerView = PhotoConfirmationContainerView()
@@ -37,6 +41,7 @@ final class CameraContainerViewController: UIViewController {
     var imageRotation: CameraImageRotation = .zero
     var rotatedPreviewImage: UIImage?
     var isRotatingPhoto = false
+    var photoEditLayout: CameraPhotoEditLayout?
     var photoLibraryLoadProgress: Progress?
     var photoLibraryLoadID: UUID?
     private var didPresentInitialPhotoLibrary = false
@@ -79,7 +84,8 @@ final class CameraContainerViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        updateROISelectableFrame()
+        updatePhotoGuideFrame()
+        updatePhotoEditLayout()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -107,10 +113,21 @@ private extension CameraContainerViewController {
     func setupUI() {
         view.backgroundColor = .systemBlack
 
+        photoCanvasView.backgroundColor = .black
+        photoCanvasView.clipsToBounds = true
+        photoCanvasView.isHidden = true
+        photoCanvasView.addSubview(selectedImageView)
+
         selectedImageView.contentMode = .scaleAspectFit
-        selectedImageView.backgroundColor = .black
         selectedImageView.clipsToBounds = true
-        selectedImageView.isHidden = true
+
+        photoPinchGestureRecognizer.delegate = self
+        photoPanGestureRecognizer.delegate = self
+        photoPanGestureRecognizer.maximumNumberOfTouches = 2
+        photoPinchGestureRecognizer.isEnabled = isCropEnabled
+        photoPanGestureRecognizer.isEnabled = isCropEnabled
+        photoCanvasView.addGestureRecognizer(photoPinchGestureRecognizer)
+        photoCanvasView.addGestureRecognizer(photoPanGestureRecognizer)
 
         closeButton.setImage(UIImage.icMultiple, for: .normal)
         closeButton.tintColor = .systemWhite
@@ -133,7 +150,7 @@ private extension CameraContainerViewController {
     func setupLayout() {
         var subviews: [UIView] = [
             previewView,
-            selectedImageView,
+            photoCanvasView,
             topControlsStackView,
             bottomCameraShutterView,
             photoConfirmationContainerView
@@ -149,7 +166,7 @@ private extension CameraContainerViewController {
             $0.edges.equalToSuperview()
         }
 
-        selectedImageView.snp.makeConstraints {
+        photoCanvasView.snp.makeConstraints {
             $0.edges.equalToSuperview()
         }
 
@@ -188,6 +205,8 @@ private extension CameraContainerViewController {
 
     func bindActions() {
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        photoPinchGestureRecognizer.addTarget(self, action: #selector(handlePhotoPinch(_:)))
+        photoPanGestureRecognizer.addTarget(self, action: #selector(handlePhotoPan(_:)))
 
         bottomCameraShutterView.onGalleryTap = { [weak self] in
             self?.onEvent(.buttonClicked(.gallery))
@@ -216,5 +235,20 @@ private extension CameraContainerViewController {
             self?.onEvent(.buttonClicked(.rotateRight))
             self?.rotateCapturedPhoto(clockwiseDegrees: 90)
         }
+    }
+}
+
+extension CameraContainerViewController: UIGestureRecognizerDelegate {
+    /// 두 손가락으로 확대하면서 동시에 이동할 수 있도록 pinch와 pan을 함께 인식합니다.
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        let photoGestures: [UIGestureRecognizer] = [
+            photoPinchGestureRecognizer,
+            photoPanGestureRecognizer
+        ]
+        return photoGestures.contains(gestureRecognizer)
+            && photoGestures.contains(otherGestureRecognizer)
     }
 }
