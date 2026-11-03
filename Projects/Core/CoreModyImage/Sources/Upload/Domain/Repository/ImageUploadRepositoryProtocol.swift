@@ -17,6 +17,6 @@ public protocol ImageUploadRepositoryProtocol {
     func putImage(
         fileURL: URL,
         to url: URL,
-        maximumPixelSize: Int?
+        maximumPixelSize: Int
     ) async throws
 }

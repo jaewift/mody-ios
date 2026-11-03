@@ -47,22 +47,13 @@ public struct ImageUploadRepository: ImageUploadRepositoryProtocol {
     public func putImage(
         fileURL: URL,
         to url: URL,
-        maximumPixelSize: Int?
+        maximumPixelSize: Int
     ) async throws {
-        let uploadFileURL: URL
-        if let maximumPixelSize {
-            uploadFileURL = try ImageUploadFileProcessor().makeDownsampledJPEG(
-                from: fileURL,
-                maximumPixelSize: maximumPixelSize
-            )
-        } else {
-            uploadFileURL = fileURL
-        }
-        defer {
-            if uploadFileURL != fileURL {
-                try? FileManager.default.removeItem(at: uploadFileURL)
-            }
-        }
+        let uploadFileURL = try ImageUploadFileProcessor().makeDownsampledJPEG(
+            from: fileURL,
+            maximumPixelSize: maximumPixelSize
+        )
+        defer { try? FileManager.default.removeItem(at: uploadFileURL) }
 
         let contentType = try contentType(for: uploadFileURL)
         let response = await uploadSession

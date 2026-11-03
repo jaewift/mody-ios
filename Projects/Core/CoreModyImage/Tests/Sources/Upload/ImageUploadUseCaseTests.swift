@@ -25,7 +25,7 @@ final class ImageUploadUseCaseTests: XCTestCase {
         XCTAssertEqual(repository.maximumPixelSize, 640)
     }
 
-    func testRecordUploadKeepsOriginalUploadPolicy() async throws {
+    func testRecordUploadApplies2048PixelPolicy() async throws {
         let repository = ImageUploadRepositoryMock()
         let useCase = ImageUploadUseCase(repository: repository)
 
@@ -35,8 +35,8 @@ final class ImageUploadUseCaseTests: XCTestCase {
             domain: .record
         )
 
-        XCTAssertEqual(repository.presignedFileName, "record.heic")
-        XCTAssertNil(repository.maximumPixelSize)
+        XCTAssertEqual(repository.presignedFileName, "record.jpg")
+        XCTAssertEqual(repository.maximumPixelSize, 2048)
     }
 }
 
@@ -58,7 +58,7 @@ private final class ImageUploadRepositoryMock: ImageUploadRepositoryProtocol {
     func putImage(
         fileURL: URL,
         to url: URL,
-        maximumPixelSize: Int?
+        maximumPixelSize: Int
     ) async throws {
         self.maximumPixelSize = maximumPixelSize
     }

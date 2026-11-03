@@ -20,19 +20,13 @@ public struct ImageUploadUseCase: ImageUploadUseCaseProtocol {
         fileName: String,
         domain: ImageUploadDomain
     ) async throws -> String {
-        let uploadFileName: String
-        let maximumPixelSize: Int?
-
-        switch domain {
-        case .record:
-            uploadFileName = fileName
-            maximumPixelSize = nil
-
-        case .profile:
-            let baseName = (fileName as NSString).deletingPathExtension
-            uploadFileName = "\(baseName).jpg"
-            maximumPixelSize = 640
+        let maximumPixelSize = switch domain {
+        case .record: 2048
+        case .profile: 640
         }
+        // 업로드 파일은 항상 JPEG로 다시 인코딩되므로 확장자를 맞춥니다.
+        let baseName = (fileName as NSString).deletingPathExtension
+        let uploadFileName = "\(baseName).jpg"
 
         let presignedUpload = try await repository.postPresignedURL(
             domain: domain,
