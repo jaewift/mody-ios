@@ -23,6 +23,14 @@ extension MainCoordinator: FeedRouter {
                 outputHandler: self
             )
             navigationController.pushViewController(viewController, animated: true)
+        case let .routeToChat(groupId, recordId):
+            let viewController = feedBuilder.makeFeedChatViewController(
+                router: self,
+                groupId: groupId,
+                recordId: recordId,
+                outputHandler: self
+            )
+            navigationController.pushViewController(viewController, animated: true)
         }
     }
 }

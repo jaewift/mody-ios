@@ -46,6 +46,9 @@ final class FeedDemoDependencyContainer {
 
     func makeFeedBuildable() -> FeedBuildable {
         let feedUseCase = FeedUseCase(feedRepository: feedRepository)
+        let chatUseCase = FeedChatUseCase(
+            chatRepository: FeedDemoChatMockRepository(feedRepository: feedRepository)
+        )
 
         return FeedBuilder(
             makeFeedReactor: { router, outputHandler in
@@ -71,6 +74,19 @@ final class FeedDemoDependencyContainer {
                     imageUploadUseCase: self.imageUploadUseCase,
                     temporaryImageFileUseCase: self.temporaryImageFileUseCase,
                     analyticsUseCase: self.analyticsUseCase,
+                    output: { [weak outputHandler] output in
+                        outputHandler?.handle(output: output)
+                    }
+                )
+            },
+            makeFeedChatReactor: { router, groupId, recordId, outputHandler in
+                FeedChatReactor(
+                    router: router,
+                    groupId: groupId,
+                    recordId: recordId,
+                    chatUseCase: chatUseCase,
+                    feedUseCase: feedUseCase,
+                    authUseCase: self.authUseCase,
                     output: { [weak outputHandler] output in
                         outputHandler?.handle(output: output)
                     }

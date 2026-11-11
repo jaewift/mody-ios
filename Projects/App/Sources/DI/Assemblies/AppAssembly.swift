@@ -30,6 +30,7 @@ struct AppAssembly: Assembly {
         assembleOnBoardingFeature(in: container)
         assembleModyGroupFeature(in: container)
         assembleFeedRecordReactor(in: container)
+        assembleFeedChatReactor(in: container)
         assembleFeedReactor(in: container)
         assembleChallengeFeature(in: container)
         assembleMyPageFeatures(in: container)

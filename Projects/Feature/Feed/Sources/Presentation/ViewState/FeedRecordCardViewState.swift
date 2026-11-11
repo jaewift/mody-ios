@@ -14,12 +14,7 @@ struct FeedRecordCardViewState: Equatable {
     let isMine: Bool
     let showsMoreButton: Bool
     let menus: [FeedRecordMenu]
-    let imageUrl: String
-    let imageCropRegion: FeedImageCropRegion?
-    let firstInfoTitle: String
-    let firstInfoValue: String
-    let secondInfoTitle: String
-    let secondInfoValue: String
+    let content: FeedRecordCardContentViewState
 
     init(
         record: FeedRecord,
@@ -35,20 +30,49 @@ struct FeedRecordCardViewState: Equatable {
         self.isMine = isMine
         showsMoreButton = true
         menus = isMine ? [.delete] : [.report]
-        imageUrl = record.imageUrl
-        imageCropRegion = record.imageCropRegion
+        content = FeedRecordCardContentViewState(
+            recordType: record.recordType,
+            imageUrl: record.imageUrl,
+            imageCropRegion: record.imageCropRegion,
+            recordedTime: record.recordedTime,
+            menu: record.menu,
+            exerciseDurationMinutes: record.exerciseDurationMinutes,
+            exerciseName: record.exerciseName
+        )
+    }
+}
 
-        switch record.recordType {
+struct FeedRecordCardContentViewState: Equatable {
+    let imageUrl: String
+    let imageCropRegion: FeedImageCropRegion?
+    let firstInfoTitle: String
+    let firstInfoValue: String
+    let secondInfoTitle: String
+    let secondInfoValue: String
+
+    init(
+        recordType: FeedRecordKind,
+        imageUrl: String,
+        imageCropRegion: FeedImageCropRegion?,
+        recordedTime: String,
+        menu: String,
+        exerciseDurationMinutes: Int,
+        exerciseName: String
+    ) {
+        self.imageUrl = imageUrl
+        self.imageCropRegion = imageCropRegion
+
+        switch recordType {
         case .meal:
             firstInfoTitle = "식사 시간"
-            firstInfoValue = record.recordedTime
+            firstInfoValue = recordedTime
             secondInfoTitle = "메뉴"
-            secondInfoValue = record.menu
+            secondInfoValue = menu
         case .exercise:
             firstInfoTitle = "운동 시간"
-            firstInfoValue = "\(record.exerciseDurationMinutes)분"
+            firstInfoValue = "\(exerciseDurationMinutes)분"
             secondInfoTitle = "운동종류"
-            secondInfoValue = record.exerciseName
+            secondInfoValue = exerciseName
         }
     }
 }

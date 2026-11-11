@@ -127,6 +127,34 @@ extension FeedDemoCoordinator: FeedRouter {
             )
             viewController.hidesBottomBarWhenPushed = true
             navigationController.pushViewController(viewController, animated: true)
+        case let .routeToChat(groupId, recordId):
+            let viewController = feedBuildable.makeFeedChatViewController(
+                router: self,
+                groupId: groupId,
+                recordId: recordId,
+                outputHandler: self
+            )
+            viewController.hidesBottomBarWhenPushed = true
+            navigationController.pushViewController(viewController, animated: true)
+        }
+    }
+}
+
+extension FeedDemoCoordinator: FeedChatRouter {
+    func route(from route: FeedChatRoute) {
+        switch route {
+        case .back:
+            navigationController.popViewController(animated: true)
+        }
+    }
+}
+
+extension FeedDemoCoordinator: FeedChatOutputHandler {
+    func handle(output: FeedChatOutput) {
+        switch output {
+        case .recordDeleted:
+            navigationController.popViewController(animated: true)
+            feedInputHandler?.handle(input: .recordDeleted)
         }
     }
 }

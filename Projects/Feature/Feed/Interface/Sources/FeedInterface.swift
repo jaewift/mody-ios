@@ -20,4 +20,12 @@ public protocol FeedBuildable {
         recordType: FeedRecordType,
         outputHandler: FeedRecordOutputHandler
     ) -> UIViewController
+
+    @MainActor
+    func makeFeedChatViewController(
+        router: FeedChatRouter,
+        groupId: Int,
+        recordId: Int,
+        outputHandler: FeedChatOutputHandler
+    ) -> UIViewController
 }
