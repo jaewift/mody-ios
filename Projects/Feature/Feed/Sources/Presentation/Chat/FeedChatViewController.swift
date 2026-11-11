@@ -51,6 +51,7 @@ public final class FeedChatViewController: UIViewController, ReactorKit.View {
         super.viewDidLoad()
 
         configureCommentTableView()
+        addHostedView(FeedChatCommentEmptyView(), to: chatView.commentEmptyContainerView)
         configureMenuDismissGesture()
         configureLoadingView()
         reactor?.action.onNext(.viewDidLoad)
@@ -132,6 +133,30 @@ private extension FeedChatViewController {
             .distinctUntilChanged()
             .bind(with: self) { owner, comments in
                 owner.updateComments(comments)
+            }
+            .disposed(by: disposeBag)
+
+        reactor.state
+            .observe(on: MainScheduler.instance)
+            .compactMap { $0.currentRecord?.recordId }
+            .distinctUntilChanged()
+            .skip(1)
+            .bind(with: self) { owner, _ in
+                // 다른 피드로 넘기면 그 피드의 댓글을 처음부터 보여줍니다.
+                let tableView = owner.chatView.commentTableView
+                tableView.setContentOffset(
+                    CGPoint(x: 0, y: -tableView.adjustedContentInset.top),
+                    animated: false
+                )
+            }
+            .disposed(by: disposeBag)
+
+        reactor.state
+            .observe(on: MainScheduler.instance)
+            .map(\.isCommentEmpty)
+            .distinctUntilChanged()
+            .bind(with: self) { owner, isEmpty in
+                owner.chatView.commentEmptyContainerView.isHidden = !isEmpty
             }
             .disposed(by: disposeBag)
 

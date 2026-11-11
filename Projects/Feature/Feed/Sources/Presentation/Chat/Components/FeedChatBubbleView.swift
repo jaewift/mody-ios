@@ -8,7 +8,8 @@
 import DesignSystem
 import UIKit
 
-/// 프로필 쪽(왼쪽 위) 모서리만 살짝 둥글고 나머지는 크게 둥근 말풍선입니다.
+/// 작성자 쪽 위 모서리만 살짝 둥글고 나머지는 크게 둥근 말풍선입니다.
+/// 내 댓글은 오른쪽 위 모서리가 뾰족하도록 좌우를 뒤집고 노란색으로 칠합니다.
 final class FeedChatBubbleView: UIView {
     private enum Metric {
         static let tailCornerRadius: CGFloat = 4
@@ -17,10 +18,18 @@ final class FeedChatBubbleView: UIView {
 
     private let backgroundLayer = CAShapeLayer()
 
+    var isMine = false {
+        didSet {
+            guard isMine != oldValue else { return }
+            updateFillColor()
+            setNeedsLayout()
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundLayer.fillColor = UIColor.gray1.cgColor
         layer.insertSublayer(backgroundLayer, at: 0)
+        updateFillColor()
     }
 
     @available(*, unavailable)
@@ -31,16 +40,24 @@ final class FeedChatBubbleView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         backgroundLayer.frame = bounds
-        backgroundLayer.path = makePath(in: bounds).cgPath
+        let path = makePath(in: bounds)
+        if isMine {
+            path.apply(CGAffineTransform(scaleX: -1, y: 1).translatedBy(x: -bounds.width, y: 0))
+        }
+        backgroundLayer.path = path.cgPath
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        backgroundLayer.fillColor = UIColor.gray1.cgColor
+        updateFillColor()
     }
 }
 
 private extension FeedChatBubbleView {
+    func updateFillColor() {
+        backgroundLayer.fillColor = (isMine ? UIColor.main3 : UIColor.gray1).cgColor
+    }
+
     func makePath(in rect: CGRect) -> UIBezierPath {
         let tail = min(Metric.tailCornerRadius, rect.height / 2)
         let radius = min(Metric.cornerRadius, rect.height / 2, rect.width / 2)

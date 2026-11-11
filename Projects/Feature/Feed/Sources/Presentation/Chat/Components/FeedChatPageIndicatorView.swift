@@ -12,8 +12,8 @@ import UIKit
 /// 선택된 페이지는 노란 캡슐, 나머지는 회색 점으로 표시합니다.
 final class FeedChatPageIndicatorView: UIView {
     private enum Metric {
-        static let dotSize: CGFloat = 6
-        static let selectedWidth: CGFloat = 16
+        static let dotSize: CGFloat = 8
+        static let selectedWidth: CGFloat = 20
     }
 
     private let stackView = UIStackView()
@@ -30,20 +30,29 @@ final class FeedChatPageIndicatorView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(numberOfPages: Int, currentPage: Int) {
+    func configure(numberOfPages: Int, currentPage: Int, animated: Bool = false) {
         if dotViews.count != numberOfPages {
             rebuildDots(count: numberOfPages)
         }
 
         isHidden = numberOfPages <= 1
 
-        for (index, dotView) in dotViews.enumerated() {
-            let isSelected = index == currentPage
-            dotView.backgroundColor = isSelected ? .main : .gray2
-            dotView.snp.updateConstraints {
-                $0.width.equalTo(isSelected ? Metric.selectedWidth : Metric.dotSize)
+        let updates = { [self] in
+            for (index, dotView) in dotViews.enumerated() {
+                let isSelected = index == currentPage
+                dotView.backgroundColor = isSelected ? .main : .gray2
+                dotView.snp.updateConstraints {
+                    $0.width.equalTo(isSelected ? Metric.selectedWidth : Metric.dotSize)
+                }
             }
+            layoutIfNeeded()
         }
+
+        guard animated, window != nil else {
+            updates()
+            return
+        }
+        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseInOut, animations: updates)
     }
 }
 

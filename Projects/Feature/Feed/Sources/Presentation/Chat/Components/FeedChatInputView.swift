@@ -105,6 +105,7 @@ private extension FeedChatInputView {
 
         stackView.snp.makeConstraints {
             $0.top.bottom.equalToSuperview()
+            $0.height.equalTo(44)
             $0.leading.trailing.equalToSuperview().inset(24)
         }
 

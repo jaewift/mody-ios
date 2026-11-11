@@ -11,7 +11,7 @@ import UIKit
 
 /// 같은 날짜에 올라온 피드 사진을 좌우로 넘겨보는 영역입니다.
 final class FeedChatRecordCarouselView: UIView {
-    static let height: CGFloat = cardHeight + 12 + 6 + 20
+    static let height: CGFloat = cardHeight + 16 + 8 + 20
     /// 피드 목록 카드(`FeedRecordCardCell`)와 같은 높이입니다.
     private static let cardHeight: CGFloat = 200
 
@@ -102,9 +102,9 @@ private extension FeedChatRecordCarouselView {
         }
 
         pageIndicatorView.snp.makeConstraints {
-            $0.top.equalTo(collectionView.snp.bottom).offset(12)
+            $0.top.equalTo(collectionView.snp.bottom).offset(16)
             $0.leading.trailing.equalToSuperview()
-            $0.height.equalTo(6)
+            $0.height.equalTo(8)
         }
     }
 
@@ -145,14 +145,19 @@ extension FeedChatRecordCarouselView: UICollectionViewDataSource, UICollectionVi
         return cell
     }
 
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    /// 손가락을 떼는 시점에 도착할 페이지가 정해지므로, 감속을 기다리지 않고 바로 반영합니다.
+    func scrollViewWillEndDragging(
+        _ scrollView: UIScrollView,
+        withVelocity velocity: CGPoint,
+        targetContentOffset: UnsafeMutablePointer<CGPoint>
+    ) {
         guard scrollView.bounds.width > 0 else { return }
 
-        let page = Int((scrollView.contentOffset.x / scrollView.bounds.width).rounded())
+        let page = Int((targetContentOffset.pointee.x / scrollView.bounds.width).rounded())
         guard page != currentPage, cards.indices.contains(page) else { return }
 
         currentPage = page
-        pageIndicatorView.configure(numberOfPages: cards.count, currentPage: page)
+        pageIndicatorView.configure(numberOfPages: cards.count, currentPage: page, animated: true)
         onPageChange?(page)
     }
 }

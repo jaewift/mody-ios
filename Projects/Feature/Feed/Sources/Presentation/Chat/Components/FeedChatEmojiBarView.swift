@@ -44,6 +44,7 @@ private extension FeedChatEmojiBarView {
 
         stackView.snp.makeConstraints {
             $0.top.bottom.equalToSuperview()
+            $0.height.equalTo(36)
             $0.leading.equalToSuperview().offset(24)
             $0.trailing.lessThanOrEqualToSuperview().inset(24)
         }

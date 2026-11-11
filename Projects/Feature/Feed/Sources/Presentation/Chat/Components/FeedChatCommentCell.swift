@@ -24,6 +24,7 @@ final class FeedChatCommentCell: UITableViewCell {
         lineBreakMode: .byCharWrapping
     )
     private let timeLabel = MUILabel(style: .c4, color: .gray5, alignment: .left)
+    private var isMineLayout: Bool?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -61,6 +62,7 @@ final class FeedChatCommentCell: UITableViewCell {
         nicknameLabel.text = viewState.nickname
         contentLabel.text = viewState.content
         timeLabel.text = viewState.createdTime
+        updateLayout(isMine: viewState.isMine)
     }
 }
 
@@ -92,21 +94,47 @@ private extension FeedChatCommentCell {
             $0.centerY.equalTo(profileImageView)
         }
 
-        bubbleView.snp.makeConstraints {
-            $0.top.equalTo(profileImageView.snp.bottom).offset(6)
-            $0.leading.equalTo(profileImageView)
-            $0.bottom.equalToSuperview().inset(8)
-        }
-
         contentLabel.snp.makeConstraints {
             $0.top.bottom.equalToSuperview().inset(10)
             $0.leading.trailing.equalToSuperview().inset(14)
         }
 
-        timeLabel.snp.makeConstraints {
-            $0.leading.equalTo(bubbleView.snp.trailing).offset(6)
-            $0.trailing.lessThanOrEqualToSuperview().inset(24)
-            $0.bottom.equalTo(bubbleView)
+        updateLayout(isMine: false)
+    }
+
+    /// 내 댓글은 프로필 없이 오른쪽에, 다른 사람 댓글은 프로필 아래 왼쪽에 배치합니다.
+    func updateLayout(isMine: Bool) {
+        guard isMineLayout != isMine else { return }
+        isMineLayout = isMine
+
+        profileImageView.isHidden = isMine
+        nicknameLabel.isHidden = isMine
+        bubbleView.isMine = isMine
+
+        if isMine {
+            bubbleView.snp.remakeConstraints {
+                $0.top.equalToSuperview().offset(8)
+                $0.trailing.equalToSuperview().inset(24)
+                $0.bottom.equalToSuperview().inset(8)
+            }
+
+            timeLabel.snp.remakeConstraints {
+                $0.trailing.equalTo(bubbleView.snp.leading).offset(-6)
+                $0.leading.greaterThanOrEqualToSuperview().offset(24)
+                $0.bottom.equalTo(bubbleView)
+            }
+        } else {
+            bubbleView.snp.remakeConstraints {
+                $0.top.equalTo(profileImageView.snp.bottom).offset(6)
+                $0.leading.equalTo(profileImageView)
+                $0.bottom.equalToSuperview().inset(8)
+            }
+
+            timeLabel.snp.remakeConstraints {
+                $0.leading.equalTo(bubbleView.snp.trailing).offset(6)
+                $0.trailing.lessThanOrEqualToSuperview().inset(24)
+                $0.bottom.equalTo(bubbleView)
+            }
         }
     }
 }
