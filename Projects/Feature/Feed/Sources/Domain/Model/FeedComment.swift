@@ -28,18 +28,21 @@ public struct FeedComment: Equatable {
     public let content: String
     /// `HH:mm`
     public let createdTime: String
+    public let isMine: Bool
 
     public init(
         commentId: Int,
         nickname: String,
         profileImageUrl: String?,
         content: String,
-        createdTime: String
+        createdTime: String,
+        isMine: Bool = false
     ) {
         self.commentId = commentId
         self.nickname = nickname
         self.profileImageUrl = profileImageUrl
         self.content = content
         self.createdTime = createdTime
+        self.isMine = isMine
     }
 }

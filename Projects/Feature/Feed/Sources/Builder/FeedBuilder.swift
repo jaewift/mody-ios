@@ -13,14 +13,14 @@ import FeedInterface
 public struct FeedBuilder: FeedBuildable {
     private let makeFeedReactor: (FeedRouter, FeedOutputHandler) -> FeedReactor
     private let makeFeedRecordReactor: (FeedRecordRouter, FeedRecordType, FeedRecordOutputHandler) -> FeedRecordReactor
-    private let makeFeedChatReactor: (FeedChatRouter, Int, Int, FeedChatOutputHandler) -> FeedChatReactor
+    private let makeFeedChatReactor: (FeedChatRouter, Int, String, Int, FeedChatOutputHandler) -> FeedChatReactor
     private let cameraCaptureBuilder: CameraCaptureBuildable
     private let imageLoader: RemoteImageLoading
     
     public init(
         makeFeedReactor: @escaping (FeedRouter, FeedOutputHandler) -> FeedReactor,
         makeFeedRecordReactor: @escaping (FeedRecordRouter, FeedRecordType, FeedRecordOutputHandler) -> FeedRecordReactor,
-        makeFeedChatReactor: @escaping (FeedChatRouter, Int, Int, FeedChatOutputHandler) -> FeedChatReactor,
+        makeFeedChatReactor: @escaping (FeedChatRouter, Int, String, Int, FeedChatOutputHandler) -> FeedChatReactor,
         cameraCaptureBuilder: CameraCaptureBuildable,
         imageLoader: RemoteImageLoading
     ) {
@@ -58,11 +58,12 @@ public struct FeedBuilder: FeedBuildable {
     public func makeFeedChatViewController(
         router: FeedChatRouter,
         groupId: Int,
+        date: String,
         recordId: Int,
         outputHandler: FeedChatOutputHandler
     ) -> UIViewController {
         return FeedChatViewController(
-            reactor: makeFeedChatReactor(router, groupId, recordId, outputHandler),
+            reactor: makeFeedChatReactor(router, groupId, date, recordId, outputHandler),
             imageLoader: imageLoader
         )
     }

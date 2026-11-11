@@ -15,28 +15,6 @@ public struct FeedChatRepository: FeedChatRepositoryProtocol {
         self.network = network
     }
 
-    public func getRecordDetail(
-        groupId: Int,
-        recordId: Int,
-        cursor: Int?,
-        size: Int
-    ) async throws -> FeedRecordDetailPage {
-        let response: CoreNetworkResponse<FeedRecordDetailResponse> = try await network.request(
-            FeedChatEndpoint.getRecordDetail(
-                groupId: groupId,
-                recordId: recordId,
-                cursor: cursor,
-                size: size
-            )
-        )
-
-        guard let result = response.result else {
-            throw NetworkError.invalidResponse
-        }
-
-        return result.toDomain()
-    }
-
     public func getComments(
         groupId: Int,
         recordId: Int,

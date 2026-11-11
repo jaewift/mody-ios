@@ -19,6 +19,7 @@ struct FeedCommentResponse: Decodable, Equatable {
     let profileImageUrl: String?
     let content: String?
     let createdAt: String?
+    let isMine: Bool?
 }
 
 extension FeedCommentListResponse {
@@ -40,7 +41,8 @@ private extension FeedCommentResponse {
             nickname: nickname ?? "",
             profileImageUrl: profileImageUrl,
             content: content ?? "",
-            createdTime: Self.timeText(from: createdAt)
+            createdTime: Self.timeText(from: createdAt),
+            isMine: isMine ?? false
         )
     }
 

@@ -6,52 +6,49 @@
 //
 
 public struct FeedChatUseCase {
+    /// 한 날짜의 피드를 끝까지 받을 때 무한 반복을 막기 위한 최대 요청 횟수입니다.
+    private static let maxDayRecordRequests = 10
+
     private let chatRepository: FeedChatRepositoryProtocol
+    private let feedRepository: FeedRepositoryProtocol
 
-    public init(chatRepository: FeedChatRepositoryProtocol) {
+    public init(
+        chatRepository: FeedChatRepositoryProtocol,
+        feedRepository: FeedRepositoryProtocol
+    ) {
         self.chatRepository = chatRepository
+        self.feedRepository = feedRepository
     }
 
-    public func fetchRecordDetail(
+    /// 해당 날짜에 그룹에 올라온 피드를 모두 받아옵니다.
+    public func fetchDayRecords(
         groupId: Int,
-        recordId: Int,
+        date: String,
+        myMemberId: Int?,
         size: Int = 20
-    ) async throws -> FeedRecordDetailPage {
-        try await chatRepository.getRecordDetail(
-            groupId: groupId,
-            recordId: recordId,
-            cursor: nil,
-            size: size
-        )
-    }
+    ) async throws -> [FeedRecordDetail] {
+        var records: [FeedRecord] = []
+        var recordIDs = Set<Int>()
+        var cursor: Int?
 
-    /// 다음 페이지를 이어 붙이며, 이미 가진 기록은 중복으로 추가하지 않습니다.
-    public func fetchNextRecordDetail(
-        groupId: Int,
-        recordId: Int,
-        currentPage: FeedRecordDetailPage,
-        size: Int = 20
-    ) async throws -> FeedRecordDetailPage {
-        guard currentPage.hasNext,
-              let cursor = currentPage.nextCursor else {
-            return currentPage
+        for _ in 0..<Self.maxDayRecordRequests {
+            let page = try await feedRepository.getRecords(
+                groupId: groupId,
+                date: date,
+                cursor: cursor,
+                size: size
+            )
+            records += page.records.filter { recordIDs.insert($0.recordId).inserted }
+
+            guard page.hasNext,
+                  let nextCursor = page.nextCursor,
+                  nextCursor != cursor else {
+                break
+            }
+            cursor = nextCursor
         }
 
-        let nextPage = try await chatRepository.getRecordDetail(
-            groupId: groupId,
-            recordId: recordId,
-            cursor: cursor,
-            size: size
-        )
-        var recordIDs = Set(currentPage.records.map(\.recordId))
-        let newRecords = nextPage.records.filter { recordIDs.insert($0.recordId).inserted }
-
-        return FeedRecordDetailPage(
-            records: currentPage.records + newRecords,
-            currentIndex: currentPage.currentIndex,
-            nextCursor: nextPage.nextCursor,
-            hasNext: nextPage.hasNext && nextPage.nextCursor != currentPage.nextCursor
-        )
+        return records.map { FeedRecordDetail(record: $0, myMemberId: myMemberId) }
     }
 
     public func fetchComments(

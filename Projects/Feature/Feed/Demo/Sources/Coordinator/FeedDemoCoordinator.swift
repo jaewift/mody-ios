@@ -127,10 +127,11 @@ extension FeedDemoCoordinator: FeedRouter {
             )
             viewController.hidesBottomBarWhenPushed = true
             navigationController.pushViewController(viewController, animated: true)
-        case let .routeToChat(groupId, recordId):
+        case let .routeToChat(groupId, date, recordId):
             let viewController = feedBuildable.makeFeedChatViewController(
                 router: self,
                 groupId: groupId,
+                date: date,
                 recordId: recordId,
                 outputHandler: self
             )

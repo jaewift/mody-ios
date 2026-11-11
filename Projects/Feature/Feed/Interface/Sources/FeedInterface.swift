@@ -25,6 +25,7 @@ public protocol FeedBuildable {
     func makeFeedChatViewController(
         router: FeedChatRouter,
         groupId: Int,
+        date: String,
         recordId: Int,
         outputHandler: FeedChatOutputHandler
     ) -> UIViewController

@@ -22,7 +22,7 @@ final class FeedChatTests: XCTestCase {
               "nickname": "예은",
               "content": "파이팅",
               "createdAt": "2026-11-11T13:50:12.123",
-              "isMine": false
+              "isMine": true
             },
             { "content": "commentId 없음" }
           ],
@@ -36,56 +36,39 @@ final class FeedChatTests: XCTestCase {
         XCTAssertEqual(page.comments.count, 1)
         XCTAssertEqual(page.comments.first?.createdTime, "13:50")
         XCTAssertEqual(page.comments.first?.nickname, "예은")
+        XCTAssertEqual(page.comments.first?.isMine, true)
     }
 
-    func testRecordDetailResponseTrimsRecordedTimeAndDropsRecordsWithoutImage() throws {
-        let data = Data("""
-        {
-          "totalCount": 2,
-          "currentIndex": 1,
-          "records": [
-            { "recordId": 10, "recordType": "MEAL", "recordedTime": "13:00:00", "menu": "계란", "imageUrl": "a.jpg", "isMine": true },
-            { "recordId": 11, "recordType": "EXERCISE", "imageUrl": "  " }
-          ],
-          "hasNext": false
-        }
-        """.utf8)
-
-        let page = try JSONDecoder().decode(FeedRecordDetailResponse.self, from: data).toDomain()
-
-        XCTAssertEqual(page.records.map(\.recordId), [10])
-        XCTAssertEqual(page.records.first?.recordedTime, "13:00")
-        XCTAssertEqual(page.records.first?.isMine, true)
-        XCTAssertEqual(page.currentIndex, 1)
+    func testInitialPageIndexFindsRequestedRecord() {
+        XCTAssertEqual(FeedChatReactor.initialPageIndex(of: 3, in: makeRecords(ids: [1, 2, 3])), 2)
     }
 
-    func testInitialPageIndexPrefersRequestedRecordOverServerIndex() {
-        let page = makePage(recordIds: [1, 2, 3], currentIndex: 0)
-
-        XCTAssertEqual(FeedChatReactor.initialPageIndex(of: 3, in: page), 2)
+    func testInitialPageIndexFallsBackToFirstPageWhenRecordIsMissing() {
+        XCTAssertEqual(FeedChatReactor.initialPageIndex(of: 99, in: makeRecords(ids: [1, 2])), 0)
     }
 
-    func testInitialPageIndexClampsServerIndexWhenRecordIsMissing() {
-        let page = makePage(recordIds: [1, 2], currentIndex: 5)
-
-        XCTAssertEqual(FeedChatReactor.initialPageIndex(of: 99, in: page), 1)
-    }
-
-    func testFetchNextRecordDetailAppendsOnlyNewRecords() async throws {
-        let repository = FeedChatRepositoryMock(
-            nextPage: makePage(recordIds: [2, 3], currentIndex: 0, nextCursor: nil, hasNext: false)
-        )
-        let useCase = FeedChatUseCase(chatRepository: repository)
-
-        let page = try await useCase.fetchNextRecordDetail(
-            groupId: 1,
-            recordId: 1,
-            currentPage: makePage(recordIds: [1, 2], currentIndex: 0, nextCursor: 20, hasNext: true)
+    func testFetchDayRecordsLoadsAllPagesAndMarksMyRecords() async throws {
+        let feedRepository = FeedRepositoryStub(pages: [
+            nil: FeedRecordPage(
+                records: [makeFeedRecord(id: 1, memberId: 7), makeFeedRecord(id: 2, memberId: 8)],
+                nextCursor: 20,
+                hasNext: true
+            ),
+            20: FeedRecordPage(
+                records: [makeFeedRecord(id: 2, memberId: 8), makeFeedRecord(id: 3, memberId: 9)],
+                nextCursor: nil,
+                hasNext: false
+            )
+        ])
+        let useCase = FeedChatUseCase(
+            chatRepository: FeedChatRepositoryMock(),
+            feedRepository: feedRepository
         )
 
-        XCTAssertEqual(page.records.map(\.recordId), [1, 2, 3])
-        XCTAssertFalse(page.hasNext)
-        XCTAssertEqual(repository.requestedCursor, 20)
+        let records = try await useCase.fetchDayRecords(groupId: 1, date: "2026-11-11", myMemberId: 8)
+
+        XCTAssertEqual(records.map(\.recordId), [1, 2, 3])
+        XCTAssertEqual(records.map(\.isMine), [false, true, false])
     }
 
     @MainActor
@@ -93,7 +76,7 @@ final class FeedChatTests: XCTestCase {
         let reactor = makeReactor()
         var state = reactor.reduce(
             state: reactor.initialState,
-            mutation: .setRecordPage(makePage(recordIds: [1, 2], currentIndex: 0), initialRecordId: 1)
+            mutation: .setRecords(makeRecords(ids: [1, 2]))
         )
         state = reactor.reduce(state: state, mutation: .setCurrentPageIndex(1))
 
@@ -109,6 +92,40 @@ final class FeedChatTests: XCTestCase {
         XCTAssertTrue(staleState.comments.isEmpty)
         XCTAssertEqual(freshState.comments.map(\.commentId), [2])
     }
+
+    @MainActor
+    func testCommentEmptyStateAppearsOnlyAfterCommentsAreLoaded() {
+        let reactor = makeReactor()
+        var state = reactor.reduce(
+            state: reactor.initialState,
+            mutation: .setRecords(makeRecords(ids: [1]))
+        )
+        XCTAssertFalse(state.isCommentEmpty)
+
+        state = reactor.reduce(state: state, mutation: .setComments([], recordId: 1))
+        XCTAssertTrue(state.isCommentEmpty)
+
+        state = reactor.reduce(
+            state: state,
+            mutation: .appendPendingComment(.init(recordId: 1, comment: makeComment(id: -10)))
+        )
+        XCTAssertFalse(state.isCommentEmpty)
+    }
+
+    @MainActor
+    func testReturningToPreviousPageShowsCachedComments() {
+        let reactor = makeReactor()
+        var state = reactor.reduce(
+            state: reactor.initialState,
+            mutation: .setRecords(makeRecords(ids: [1, 2]))
+        )
+        state = reactor.reduce(state: state, mutation: .setComments([makeComment(id: 1)], recordId: 1))
+        state = reactor.reduce(state: state, mutation: .setCurrentPageIndex(1))
+        XCTAssertTrue(state.comments.isEmpty)
+
+        state = reactor.reduce(state: state, mutation: .setCurrentPageIndex(0))
+        XCTAssertEqual(state.comments.map(\.commentId), [1])
+    }
 }
 
 extension FeedChatTests {
@@ -117,7 +134,7 @@ extension FeedChatTests {
         let reactor = makeReactor()
         var state = reactor.reduce(
             state: reactor.initialState,
-            mutation: .setRecordPage(makePage(recordIds: [1, 2], currentIndex: 0), initialRecordId: 1)
+            mutation: .setRecords(makeRecords(ids: [1, 2]))
         )
         state = reactor.reduce(state: state, mutation: .setComments([makeComment(id: 1)], recordId: 1))
         state = reactor.reduce(
@@ -137,7 +154,7 @@ extension FeedChatTests {
         let reactor = makeReactor()
         var state = reactor.reduce(
             state: reactor.initialState,
-            mutation: .setRecordPage(makePage(recordIds: [1], currentIndex: 0), initialRecordId: 1)
+            mutation: .setRecords(makeRecords(ids: [1]))
         )
         state = reactor.reduce(
             state: state,
@@ -159,7 +176,7 @@ extension FeedChatTests {
         let reactor = makeReactor()
         var state = reactor.reduce(
             state: reactor.initialState,
-            mutation: .setRecordPage(makePage(recordIds: [1], currentIndex: 0), initialRecordId: 1)
+            mutation: .setRecords(makeRecords(ids: [1]))
         )
         state = reactor.reduce(
             state: state,
@@ -177,26 +194,20 @@ private extension FeedChatTests {
         FeedChatReactor(
             router: FeedChatRouterMock(),
             groupId: 1,
+            date: "2026-11-11",
             recordId: 1,
-            chatUseCase: FeedChatUseCase(chatRepository: FeedChatRepositoryMock()),
-            feedUseCase: FeedUseCase(feedRepository: FeedRepositoryDummy()),
+            chatUseCase: FeedChatUseCase(
+                chatRepository: FeedChatRepositoryMock(),
+                feedRepository: FeedRepositoryStub()
+            ),
+            feedUseCase: FeedUseCase(feedRepository: FeedRepositoryStub()),
             authUseCase: FeedChatAuthUseCaseMock(),
             output: { _ in }
         )
     }
 
-    func makePage(
-        recordIds: [Int],
-        currentIndex: Int,
-        nextCursor: Int? = nil,
-        hasNext: Bool = false
-    ) -> FeedRecordDetailPage {
-        FeedRecordDetailPage(
-            records: recordIds.map(makeRecord(id:)),
-            currentIndex: currentIndex,
-            nextCursor: nextCursor,
-            hasNext: hasNext
-        )
+    func makeRecords(ids: [Int]) -> [FeedRecordDetail] {
+        ids.map(makeRecord(id:))
     }
 
     func makeRecord(id: Int) -> FeedRecordDetail {
@@ -215,6 +226,23 @@ private extension FeedChatTests {
         )
     }
 
+    func makeFeedRecord(id: Int, memberId: Int) -> FeedRecord {
+        FeedRecord(
+            recordId: id,
+            recordType: .meal,
+            memberId: memberId,
+            nickname: "user\(id)",
+            profileImageUrl: nil,
+            recordedTime: "13:00",
+            menu: "계란",
+            exerciseDurationMinutes: 0,
+            exerciseName: "",
+            imageUrl: "https://example.com/\(id).jpg",
+            imageCropRegion: nil,
+            recordingStreakDays: 1
+        )
+    }
+
     func makeComment(id: Int) -> FeedComment {
         FeedComment(
             commentId: id,
@@ -226,29 +254,7 @@ private extension FeedChatTests {
     }
 }
 
-private final class FeedChatRepositoryMock: FeedChatRepositoryProtocol {
-    private let nextPage: FeedRecordDetailPage?
-    private(set) var requestedCursor: Int?
-
-    init(nextPage: FeedRecordDetailPage? = nil) {
-        self.nextPage = nextPage
-    }
-
-    func getRecordDetail(
-        groupId: Int,
-        recordId: Int,
-        cursor: Int?,
-        size: Int
-    ) async throws -> FeedRecordDetailPage {
-        requestedCursor = cursor
-        return nextPage ?? FeedRecordDetailPage(
-            records: [],
-            currentIndex: 0,
-            nextCursor: nil,
-            hasNext: false
-        )
-    }
-
+private struct FeedChatRepositoryMock: FeedChatRepositoryProtocol {
     func getComments(
         groupId: Int,
         recordId: Int,
@@ -261,13 +267,17 @@ private final class FeedChatRepositoryMock: FeedChatRepositoryProtocol {
     func postComment(groupId: Int, recordId: Int, content: String) async throws {}
 }
 
-private struct FeedRepositoryDummy: FeedRepositoryProtocol {
+private struct FeedRepositoryStub: FeedRepositoryProtocol {
+    var pages: [Int?: FeedRecordPage] = [:]
+
+
     func getActivityCalendar(groupId: Int, baseDate: String) async throws -> FeedActivityCalendarModel {
         throw URLError(.unsupportedURL)
     }
 
     func getRecords(groupId: Int, date: String, cursor: Int?, size: Int) async throws -> FeedRecordPage {
-        throw URLError(.unsupportedURL)
+        guard let page = pages[cursor] else { throw URLError(.unsupportedURL) }
+        return page
     }
 
     func postRecord(_ request: FeedRecordCreateRequest) async throws {}

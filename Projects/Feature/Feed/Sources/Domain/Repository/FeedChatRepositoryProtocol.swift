@@ -6,13 +6,6 @@
 //
 
 public protocol FeedChatRepositoryProtocol {
-    func getRecordDetail(
-        groupId: Int,
-        recordId: Int,
-        cursor: Int?,
-        size: Int
-    ) async throws -> FeedRecordDetailPage
-
     func getComments(
         groupId: Int,
         recordId: Int,

@@ -225,7 +225,11 @@ public final class FeedReactor: Reactor {
             guard let groupId = currentState.selectedGroup?.groupId else {
                 return .empty()
             }
-            return routeToChat(groupId: groupId, recordId: recordId)
+            return routeToChat(
+                groupId: groupId,
+                date: currentState.weekCalendarViewState.selectedDate,
+                recordId: recordId
+            )
         case .input(.recordDeleted):
             return .concat([
                 fetchFirstFeedPage(
@@ -638,10 +642,10 @@ private extension FeedReactor {
         }
     }
 
-    func routeToChat(groupId: Int, recordId: Int) -> Observable<Mutation> {
+    func routeToChat(groupId: Int, date: String, recordId: Int) -> Observable<Mutation> {
         return .deferred { [weak router] in
             Task { @MainActor in
-                router?.route(from: .routeToChat(groupId: groupId, recordId: recordId))
+                router?.route(from: .routeToChat(groupId: groupId, date: date, recordId: recordId))
             }
             return .empty()
         }

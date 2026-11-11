@@ -45,6 +45,7 @@ struct FeedChatCommentViewState: Equatable {
     let profileImageUrl: String?
     let content: String
     let createdTime: String
+    let isMine: Bool
     /// 서버 저장 전 임시 댓글(음수 id)입니다.
     let isPending: Bool
 
@@ -55,5 +56,6 @@ struct FeedChatCommentViewState: Equatable {
         profileImageUrl = comment.profileImageUrl
         content = comment.content
         createdTime = comment.createdTime
+        isMine = comment.isMine
     }
 }

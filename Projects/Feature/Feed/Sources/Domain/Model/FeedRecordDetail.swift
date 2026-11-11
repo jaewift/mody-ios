@@ -5,25 +5,7 @@
 //  Created by Jaewift on 11/11/26.
 //
 
-public struct FeedRecordDetailPage: Equatable {
-    public let records: [FeedRecordDetail]
-    public let currentIndex: Int
-    public let nextCursor: Int?
-    public let hasNext: Bool
-
-    public init(
-        records: [FeedRecordDetail],
-        currentIndex: Int,
-        nextCursor: Int?,
-        hasNext: Bool
-    ) {
-        self.records = records
-        self.currentIndex = currentIndex
-        self.nextCursor = nextCursor
-        self.hasNext = hasNext
-    }
-}
-
+/// 채팅 화면 상단에서 좌우로 넘겨보는 피드 한 장입니다.
 public struct FeedRecordDetail: Equatable {
     public let recordId: Int
     public let recordType: FeedRecordKind
@@ -61,5 +43,23 @@ public struct FeedRecordDetail: Equatable {
         self.imageUrl = imageUrl
         self.imageCropRegion = imageCropRegion
         self.isMine = isMine
+    }
+}
+
+extension FeedRecordDetail {
+    init(record: FeedRecord, myMemberId: Int?) {
+        self.init(
+            recordId: record.recordId,
+            recordType: record.recordType,
+            nickname: record.nickname,
+            profileImageUrl: record.profileImageUrl,
+            recordedTime: record.recordedTime,
+            menu: record.menu,
+            exerciseDurationMinutes: record.exerciseDurationMinutes,
+            exerciseName: record.exerciseName,
+            imageUrl: record.imageUrl,
+            imageCropRegion: record.imageCropRegion,
+            isMine: record.memberId == myMemberId
+        )
     }
 }

@@ -43,22 +43,25 @@ public final class FeedChatReactor: Reactor {
 
     public struct State {
         let groupId: Int
+        let date: String
         let initialRecordId: Int
-        var recordPage: FeedRecordDetailPage?
+        var records: [FeedRecordDetail] = []
         var currentPageIndex = 0
-        var comments: [FeedComment] = []
+        /// 슬라이드를 오갈 때 바로 보여줄 수 있도록 기록별 댓글을 보관합니다.
+        var commentsByRecordId: [Int: [FeedComment]] = [:]
         var pendingComments: [PendingComment] = []
         var commentText = ""
         var myProfile: UserInfo?
         var isInitialLoading = false
-        var isNextRecordPageLoading = false
         var isRecordMenuLoading = false
         var alert: Alert?
 
-        var records: [FeedRecordDetail] { recordPage?.records ?? [] }
-
         var currentRecord: FeedRecordDetail? {
             records.indices.contains(currentPageIndex) ? records[currentPageIndex] : nil
+        }
+
+        var comments: [FeedComment] {
+            currentRecord.flatMap { commentsByRecordId[$0.recordId] } ?? []
         }
 
         /// 서버 댓글 뒤에 전송 중인 내 댓글을 이어 붙인 목록입니다.
@@ -67,6 +70,15 @@ public final class FeedChatReactor: Reactor {
             return comments + pendingComments
                 .filter { $0.recordId == recordId }
                 .map(\.comment)
+        }
+
+        /// 현재 피드의 댓글을 받아왔는데 보여줄 댓글이 없는 상태입니다.
+        var isCommentEmpty: Bool {
+            guard let recordId = currentRecord?.recordId,
+                  commentsByRecordId[recordId] != nil else {
+                return false
+            }
+            return displayedComments.isEmpty
         }
 
         var canSendComment: Bool {
@@ -89,8 +101,7 @@ public final class FeedChatReactor: Reactor {
 
     public enum Mutation {
         case setInitialLoading(Bool)
-        case setRecordPage(FeedRecordDetailPage, initialRecordId: Int?)
-        case setNextRecordPageLoading(Bool)
+        case setRecords([FeedRecordDetail])
         case setCurrentPageIndex(Int)
         case setComments([FeedComment], recordId: Int)
         case setCommentText(String)
@@ -105,6 +116,7 @@ public final class FeedChatReactor: Reactor {
     public init(
         router: FeedChatRouter,
         groupId: Int,
+        date: String,
         recordId: Int,
         chatUseCase: FeedChatUseCase,
         feedUseCase: FeedUseCase,
@@ -118,6 +130,7 @@ public final class FeedChatReactor: Reactor {
         self.output = output
         self.initialState = State(
             groupId: groupId,
+            date: date,
             initialRecordId: recordId
         )
     }
@@ -125,10 +138,7 @@ public final class FeedChatReactor: Reactor {
     public func mutate(action: Action) -> Observable<Mutation> {
         switch action {
         case .viewDidLoad:
-            return .merge([
-                fetchRecordDetail(),
-                fetchMyProfile()
-            ])
+            return fetchDayRecords()
         case .didTapBackButton:
             return route(.back)
         case let .didChangePage(index):
@@ -138,8 +148,7 @@ public final class FeedChatReactor: Reactor {
             }
             return .concat([
                 .just(.setCurrentPageIndex(index)),
-                fetchComments(recordId: currentState.records[index].recordId),
-                fetchNextRecordPageIfNeeded(visibleIndex: index)
+                fetchComments(recordId: currentState.records[index].recordId)
             ])
         case let .didChangeCommentText(text):
             return .just(.setCommentText(text))
@@ -191,23 +200,17 @@ public final class FeedChatReactor: Reactor {
         switch mutation {
         case let .setInitialLoading(isLoading):
             newState.isInitialLoading = isLoading
-        case let .setRecordPage(page, initialRecordId):
-            newState.recordPage = page
-            if let initialRecordId {
-                newState.currentPageIndex = Self.initialPageIndex(
-                    of: initialRecordId,
-                    in: page
-                )
-            }
-        case let .setNextRecordPageLoading(isLoading):
-            newState.isNextRecordPageLoading = isLoading
+        case let .setRecords(records):
+            newState.records = records
+            newState.currentPageIndex = Self.initialPageIndex(
+                of: newState.initialRecordId,
+                in: records
+            )
         case let .setCurrentPageIndex(index):
             newState.currentPageIndex = index
-            newState.comments = []
         case let .setComments(comments, recordId):
-            // 응답이 늦게 도착해 다른 슬라이드의 댓글로 덮어쓰지 않도록 현재 기록과 비교합니다.
-            guard newState.currentRecord?.recordId == recordId else { break }
-            newState.comments = comments
+            // 기록별로 저장하므로 늦게 도착한 응답이 다른 슬라이드의 댓글을 덮어쓰지 않습니다.
+            newState.commentsByRecordId[recordId] = comments
             // 저장이 끝난 댓글은 방금 받은 서버 목록에 포함되어 있으므로 임시 댓글을 지웁니다.
             newState.pendingComments.removeAll { $0.recordId == recordId && $0.isConfirmed }
         case let .setCommentText(text):
@@ -235,40 +238,46 @@ public final class FeedChatReactor: Reactor {
 extension FeedChatReactor {
     static func initialPageIndex(
         of recordId: Int,
-        in page: FeedRecordDetailPage
+        in records: [FeedRecordDetail]
     ) -> Int {
-        if let index = page.records.firstIndex(where: { $0.recordId == recordId }) {
-            return index
-        }
-
-        return min(max(page.currentIndex, 0), max(page.records.count - 1, 0))
+        records.firstIndex { $0.recordId == recordId } ?? 0
     }
 }
 
 private extension FeedChatReactor {
-    func fetchRecordDetail() -> Observable<Mutation> {
+    /// 내 정보로 본인 피드 여부를 판단해야 하므로 프로필을 받은 뒤 그날 피드를 불러옵니다.
+    func fetchDayRecords() -> Observable<Mutation> {
         let groupId = currentState.groupId
+        let date = currentState.date
         let recordId = currentState.initialRecordId
 
         let fetch = asyncObservable { [weak self] () -> Observable<Mutation>? in
             guard let self else { return nil }
 
+            let profile = try? await self.authUseCase.getUserInfo(needUpdateKeyChain: false)
+            let setProfile: Observable<Mutation> = profile.map { .just(.setMyProfile($0)) } ?? .empty()
+
             do {
-                let page = try await self.chatUseCase.fetchRecordDetail(
+                let records = try await self.chatUseCase.fetchDayRecords(
                     groupId: groupId,
-                    recordId: recordId
+                    date: date,
+                    myMemberId: profile?.memberId
                 )
-                let index = Self.initialPageIndex(of: recordId, in: page)
-                let commentRecordId = page.records.indices.contains(index)
-                    ? page.records[index].recordId
+                let index = Self.initialPageIndex(of: recordId, in: records)
+                let commentRecordId = records.indices.contains(index)
+                    ? records[index].recordId
                     : nil
 
                 return .concat([
-                    .just(.setRecordPage(page, initialRecordId: recordId)),
+                    setProfile,
+                    .just(.setRecords(records)),
                     commentRecordId.map { self.fetchComments(recordId: $0) } ?? .empty()
                 ])
             } catch {
-                return .just(.setAlert(.failure(error as? NetworkError ?? .unknown)))
+                return .concat([
+                    setProfile,
+                    .just(.setAlert(.failure(error as? NetworkError ?? .unknown)))
+                ])
             }
         }
         .flatMap { $0 }
@@ -277,36 +286,6 @@ private extension FeedChatReactor {
             .just(.setInitialLoading(true)),
             fetch,
             .just(.setInitialLoading(false))
-        ])
-    }
-
-    func fetchNextRecordPageIfNeeded(visibleIndex: Int) -> Observable<Mutation> {
-        guard let page = currentState.recordPage,
-              page.hasNext,
-              !currentState.isNextRecordPageLoading,
-              visibleIndex >= page.records.count - 2 else {
-            return .empty()
-        }
-
-        let groupId = currentState.groupId
-        let recordId = currentState.initialRecordId
-        let fetch = asyncObservable { [weak self] () -> Mutation? in
-            guard let self,
-                  let nextPage = try? await self.chatUseCase.fetchNextRecordDetail(
-                    groupId: groupId,
-                    recordId: recordId,
-                    currentPage: page
-                  ) else {
-                return nil
-            }
-
-            return .setRecordPage(nextPage, initialRecordId: nil)
-        }
-
-        return .concat([
-            .just(.setNextRecordPageLoading(true)),
-            fetch,
-            .just(.setNextRecordPageLoading(false))
         ])
     }
 
@@ -323,17 +302,6 @@ private extension FeedChatReactor {
             }
 
             return .setComments(page.comments, recordId: recordId)
-        }
-    }
-
-    func fetchMyProfile() -> Observable<Mutation> {
-        asyncObservable { [weak self] () -> Mutation? in
-            guard let self,
-                  let profile = try? await self.authUseCase.getUserInfo(needUpdateKeyChain: false) else {
-                return nil
-            }
-
-            return .setMyProfile(profile)
         }
     }
 
@@ -392,7 +360,8 @@ private extension FeedChatReactor {
                 nickname: profile?.nickname ?? "",
                 profileImageUrl: profile?.profileImageUrl,
                 content: content,
-                createdTime: Date().toString(format: .custom("HH:mm"))
+                createdTime: Date().toString(format: .custom("HH:mm")),
+                isMine: true
             )
         )
     }

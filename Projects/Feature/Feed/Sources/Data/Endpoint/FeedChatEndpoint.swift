@@ -8,25 +8,6 @@
 import CoreNetworkInterface
 
 enum FeedChatEndpoint {
-    static func getRecordDetail(
-        groupId: Int,
-        recordId: Int,
-        cursor: Int?,
-        size: Int
-    ) -> CoreNetworkEndpoint {
-        var queryParameters = ["size": String(size)]
-
-        if let cursor {
-            queryParameters["cursor"] = String(cursor)
-        }
-
-        return CoreNetworkEndpoint(
-            path: "api/v1/groups/\(groupId)/records/\(recordId)",
-            method: .GET,
-            queryParameters: queryParameters
-        )
-    }
-
     static func getComments(
         groupId: Int,
         recordId: Int,

@@ -21,12 +21,16 @@ extension AppAssembly {
 
         container.register(FeedChatUseCase.self) { resolver in
             let chatRepository: FeedChatRepositoryProtocol = resolver.resolve()
+            let feedRepository: FeedRepositoryProtocol = resolver.resolve()
 
-            return FeedChatUseCase(chatRepository: chatRepository)
+            return FeedChatUseCase(
+                chatRepository: chatRepository,
+                feedRepository: feedRepository
+            )
         }
 
-        container.register(((FeedChatRouter, Int, Int, FeedChatOutputHandler) -> FeedChatReactor).self) { resolver in
-            return { router, groupId, recordId, outputHandler in
+        container.register(((FeedChatRouter, Int, String, Int, FeedChatOutputHandler) -> FeedChatReactor).self) { resolver in
+            return { router, groupId, date, recordId, outputHandler in
                 let chatUseCase: FeedChatUseCase = resolver.resolve()
                 let feedUseCase: FeedUseCase = resolver.resolve()
                 let authUseCase: AuthUseCaseProtocol = resolver.resolve()
@@ -34,6 +38,7 @@ extension AppAssembly {
                 return FeedChatReactor(
                     router: router,
                     groupId: groupId,
+                    date: date,
                     recordId: recordId,
                     chatUseCase: chatUseCase,
                     feedUseCase: feedUseCase,

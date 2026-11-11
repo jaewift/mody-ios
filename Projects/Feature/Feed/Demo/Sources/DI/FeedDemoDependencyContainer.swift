@@ -47,7 +47,8 @@ final class FeedDemoDependencyContainer {
     func makeFeedBuildable() -> FeedBuildable {
         let feedUseCase = FeedUseCase(feedRepository: feedRepository)
         let chatUseCase = FeedChatUseCase(
-            chatRepository: FeedDemoChatMockRepository(feedRepository: feedRepository)
+            chatRepository: FeedDemoChatMockRepository(),
+            feedRepository: feedRepository
         )
 
         return FeedBuilder(
@@ -79,10 +80,11 @@ final class FeedDemoDependencyContainer {
                     }
                 )
             },
-            makeFeedChatReactor: { router, groupId, recordId, outputHandler in
+            makeFeedChatReactor: { router, groupId, date, recordId, outputHandler in
                 FeedChatReactor(
                     router: router,
                     groupId: groupId,
+                    date: date,
                     recordId: recordId,
                     chatUseCase: chatUseCase,
                     feedUseCase: feedUseCase,

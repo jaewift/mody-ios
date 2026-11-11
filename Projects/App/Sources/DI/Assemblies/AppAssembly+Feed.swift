@@ -51,7 +51,7 @@ extension AppAssembly {
         
         container.register(FeedBuildable.self) { resolver in
             let makeFeedRecordReactor: (FeedRecordRouter, FeedRecordType, FeedRecordOutputHandler) -> FeedRecordReactor = resolver.resolve()
-            let makeFeedChatReactor: (FeedChatRouter, Int, Int, FeedChatOutputHandler) -> FeedChatReactor = resolver.resolve()
+            let makeFeedChatReactor: (FeedChatRouter, Int, String, Int, FeedChatOutputHandler) -> FeedChatReactor = resolver.resolve()
             let cameraCaptureBuilder: CameraCaptureBuildable = resolver.resolve()
             let imageLoader: RemoteImageLoading = resolver.resolve()
 

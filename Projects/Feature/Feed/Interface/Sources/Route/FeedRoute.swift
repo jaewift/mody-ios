@@ -9,7 +9,7 @@ public enum FeedRoute: Equatable {
     case addGroup
     case routeToChallenge
     case routeToRecord(FeedRecordType)
-    case routeToChat(groupId: Int, recordId: Int)
+    case routeToChat(groupId: Int, date: String, recordId: Int)
 }
 
 @MainActor
