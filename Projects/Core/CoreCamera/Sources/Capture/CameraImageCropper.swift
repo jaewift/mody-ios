@@ -80,8 +80,25 @@ struct CameraImageCropper {
             displayMode: displayMode
         ) else { return nil }
 
-        let originalImageBounds = layout.originalImageBounds
-        let displayedImageFrame = layout.displayedImageFrame
+        return crop(
+            image: image,
+            selectionFrame: selectionFrame,
+            displayedImageFrame: layout.displayedImageFrame
+        )
+    }
+
+    /// 사진이 화면에 그려진 위치(`displayedImageFrame`)를 기준으로 선택 영역을 자릅니다.
+    /// 확대·이동으로 사진이 화면 밖까지 커진 경우에도 동일하게 동작합니다.
+    func crop(
+        image: UIImage,
+        selectionFrame: CGRect,
+        displayedImageFrame: CGRect
+    ) -> CameraImageCropOutput? {
+        let originalImageBounds = CGRect(origin: .zero, size: image.size)
+        guard originalImageBounds.width > 0,
+              originalImageBounds.height > 0,
+              displayedImageFrame.width > 0 else { return nil }
+
         let displayScale = displayedImageFrame.width / originalImageBounds.width
         let selectionFrameInOriginalImage = CGRect(
             x: (selectionFrame.minX - displayedImageFrame.minX) / displayScale,
@@ -89,6 +106,9 @@ struct CameraImageCropper {
             width: selectionFrame.width / displayScale,
             height: selectionFrame.height / displayScale
         ).intersection(originalImageBounds)
+        // 확대 시 소수점 크기가 되어 가장자리에 투명 픽셀이 생기지 않도록 정수 픽셀로 맞춥니다.
+        .roundedToPixels()
+        .intersection(originalImageBounds)
 
         guard !selectionFrameInOriginalImage.isNull,
               selectionFrameInOriginalImage.width > 0,
@@ -119,6 +139,18 @@ struct CameraImageCropper {
         return CameraImageCropOutput(
             croppedImage: croppedImage,
             normalizedSelectionFrame: normalizedSelectionFrame
+        )
+    }
+}
+
+private extension CGRect {
+    func roundedToPixels() -> CGRect {
+        guard !isNull else { return self }
+        return CGRect(
+            x: minX.rounded(),
+            y: minY.rounded(),
+            width: width.rounded(),
+            height: height.rounded()
         )
     }
 }

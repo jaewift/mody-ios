@@ -86,6 +86,7 @@ public final class FeedReactor: Reactor {
         case didTapCalendarDate(FeedWeekCalendarModel)
         case didReachFeedListBottom
         case didTapRecordMenu(FeedRecordMenu, recordId: Int)
+        case didTapRecord(recordId: Int)
         case deleteRecordSucceeded
         
         case didTapRecordButton(FeedRecordType)
@@ -230,6 +231,23 @@ public final class FeedReactor: Reactor {
             return sendOutput(.reportConfirmationRequested(recordId: recordId))
         case let .didTapRecordMenu(.delete, recordId):
             return sendOutput(.deleteConfirmationRequested(recordId: recordId))
+        case let .didTapRecord(recordId):
+            guard let groupId = currentState.selectedGroup?.groupId else {
+                return .empty()
+            }
+            return routeToChat(
+                groupId: groupId,
+                date: currentState.weekCalendarViewState.selectedDate,
+                recordId: recordId
+            )
+        case .input(.recordDeleted):
+            return .concat([
+                fetchFirstFeedPage(
+                    groupId: currentState.selectedGroup?.groupId,
+                    date: currentState.weekCalendarViewState.selectedDate
+                ),
+                sendOutput(.recordUpdated)
+            ])
         case .didTapRecordButton(let recordType):
             return .concat([
                 .just(.setFloatingActionButtonExpanded(false)),
@@ -629,6 +647,15 @@ private extension FeedReactor {
         return .deferred { [weak router] in
             Task { @MainActor in
                 router?.route(from: .routeToRecord(recordType))
+            }
+            return .empty()
+        }
+    }
+
+    func routeToChat(groupId: Int, date: String, recordId: Int) -> Observable<Mutation> {
+        return .deferred { [weak router] in
+            Task { @MainActor in
+                router?.route(from: .routeToChat(groupId: groupId, date: date, recordId: recordId))
             }
             return .empty()
         }

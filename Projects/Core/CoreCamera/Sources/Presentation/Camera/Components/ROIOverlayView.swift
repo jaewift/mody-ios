@@ -8,40 +8,16 @@
 import DesignSystem
 import UIKit
 
+/// 화면에 고정된 crop 가이드입니다. 사용자는 가이드가 아니라 뒤의 사진을 움직이므로 터치를 받지 않습니다.
 final class ROIOverlayView: UIView {
-    private let horizontalInset: CGFloat = 24
-    private let selectionHeight: CGFloat = 200
+    private let defaultSelectionHeight: CGFloat = 200
     private let borderWidth: CGFloat = 4
     private let selectionAspectRatio: CGSize?
-    
-    var selectionFrame: CGRect {
-        currentSelectionFrame
-    }
+
+    private(set) var selectionFrame = CGRect.zero
 
     private let dimLayer = CAShapeLayer()
     private let borderLayer = CAShapeLayer()
-    private var selectableFrame: CGRect?
-    private var currentSelectionFrame = CGRect.zero
-    private var panStartFrame = CGRect.zero
-
-    func resetSelection(in selectableFrame: CGRect?) {
-        self.selectableFrame = selectableFrame
-        currentSelectionFrame = defaultSelectionFrame()
-        updateLayers()
-    }
-
-    func updateSelectableFrame(_ selectableFrame: CGRect?) {
-        self.selectableFrame = selectableFrame
-
-        guard currentSelectionFrame != .zero else {
-            currentSelectionFrame = defaultSelectionFrame()
-            updateLayers()
-            return
-        }
-
-        currentSelectionFrame = constrainedFrame(currentSelectionFrame)
-        updateLayers()
-    }
 
     init(selectionAspectRatio: CGSize?) {
         self.selectionAspectRatio = selectionAspectRatio
@@ -56,13 +32,20 @@ final class ROIOverlayView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        updateLayers()
+    }
 
-        if currentSelectionFrame == .zero {
-            currentSelectionFrame = defaultSelectionFrame()
-        } else {
-            currentSelectionFrame = constrainedFrame(currentSelectionFrame)
-        }
-
+    /// `availableFrame` 안에서 지정된 비율로 가장 큰 가이드를 중앙에 배치합니다.
+    /// 비율이 없으면 가로 전체 · 높이 200pt 가이드를 사용합니다.
+    func updateSelectionFrame(in availableFrame: CGRect) {
+        let aspectRatio = selectionAspectRatio ?? CGSize(
+            width: availableFrame.width,
+            height: min(defaultSelectionHeight, availableFrame.height)
+        )
+        selectionFrame = ROISelectionFrameCalculator.maximumFrame(
+            aspectRatio: aspectRatio,
+            in: availableFrame
+        )
         updateLayers()
     }
 }
@@ -71,6 +54,7 @@ private extension ROIOverlayView {
     func setupUI() {
         isOpaque = false
         backgroundColor = .clear
+        isUserInteractionEnabled = false
 
         dimLayer.fillColor = UIColor.black.withAlphaComponent(0.35).cgColor
         dimLayer.fillRule = .evenOdd
@@ -81,108 +65,15 @@ private extension ROIOverlayView {
         borderLayer.lineWidth = borderWidth
         borderLayer.lineDashPattern = [8, 8]
         layer.addSublayer(borderLayer)
-
-        let panGestureRecognizer = UIPanGestureRecognizer(
-            target: self,
-            action: #selector(didPan(_:))
-        )
-        panGestureRecognizer.delegate = self
-        addGestureRecognizer(panGestureRecognizer)
     }
 
     func updateLayers() {
         let dimPath = UIBezierPath(rect: bounds)
-        dimPath.append(UIBezierPath(rect: currentSelectionFrame))
+        dimPath.append(UIBezierPath(rect: selectionFrame))
         dimLayer.frame = bounds
         dimLayer.path = dimPath.cgPath
 
         borderLayer.frame = bounds
-        borderLayer.path = UIBezierPath(rect: currentSelectionFrame).cgPath
-    }
-
-    func defaultSelectionFrame() -> CGRect {
-        let selectableFrame = borderSafeSelectableFrame()
-        let aspectRatio = selectionAspectRatio ?? defaultAspectRatio(
-            in: effectiveSelectableFrame()
-        )
-
-        return ROISelectionFrameCalculator.maximumFrame(
-            aspectRatio: aspectRatio,
-            in: selectableFrame
-        )
-    }
-
-    func defaultAspectRatio(in selectableFrame: CGRect) -> CGSize {
-        let horizontalMargin = min(horizontalInset, selectableFrame.width / 2)
-        return CGSize(
-            width: max(0, selectableFrame.width - (horizontalMargin * 2)),
-            height: min(selectionHeight, selectableFrame.height)
-        )
-    }
-
-    func effectiveSelectableFrame() -> CGRect {
-        guard let selectableFrame else { return bounds }
-
-        let effectiveFrame = selectableFrame.intersection(bounds)
-        guard !effectiveFrame.isNull,
-              effectiveFrame.width > 0,
-              effectiveFrame.height > 0 else { return bounds }
-
-        return effectiveFrame
-    }
-
-    func constrainedFrame(_ frame: CGRect) -> CGRect {
-        let selectableFrame = borderSafeSelectableFrame()
-        let width = min(frame.width, selectableFrame.width)
-        let height = min(frame.height, selectableFrame.height)
-
-        return CGRect(
-            x: min(
-                max(selectableFrame.minX, frame.minX),
-                max(selectableFrame.minX, selectableFrame.maxX - width)
-            ),
-            y: min(
-                max(selectableFrame.minY, frame.minY),
-                max(selectableFrame.minY, selectableFrame.maxY - height)
-            ),
-            width: width,
-            height: height
-        )
-    }
-
-    func borderSafeSelectableFrame() -> CGRect {
-        let selectableFrame = effectiveSelectableFrame()
-        let borderInset = max(
-            0,
-            min(
-                borderWidth / 2,
-                min(selectableFrame.width, selectableFrame.height) / 2
-            )
-        )
-        return selectableFrame.insetBy(dx: borderInset, dy: borderInset)
-    }
-
-    @objc func didPan(_ recognizer: UIPanGestureRecognizer) {
-        switch recognizer.state {
-        case .began:
-            panStartFrame = currentSelectionFrame
-        case .changed:
-            let translation = recognizer.translation(in: self)
-            currentSelectionFrame = constrainedFrame(
-                panStartFrame.offsetBy(dx: translation.x, dy: translation.y)
-            )
-            updateLayers()
-        default:
-            break
-        }
-    }
-}
-
-extension ROIOverlayView: UIGestureRecognizerDelegate {
-    func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldReceive touch: UITouch
-    ) -> Bool {
-        currentSelectionFrame.contains(touch.location(in: self))
+        borderLayer.path = UIBezierPath(rect: selectionFrame).cgPath
     }
 }

@@ -43,6 +43,9 @@ extension FeedViewController: UICollectionViewDataSource, UICollectionViewDelega
                 )
             )
         }
+        cell.onRecordTap = { [weak self] in
+            self?.reactor?.action.onNext(.didTapRecord(recordId: viewState.recordId))
+        }
         cell.configure(
             viewState,
             imageLoader: imageLoader

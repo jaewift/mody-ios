@@ -15,6 +15,7 @@ final class FeedRecordCardCell: UICollectionViewCell {
     static let contentHeight: CGFloat = 244
 
     var onMenuSelect: ((FeedRecordMenu) -> Void)?
+    var onRecordTap: (() -> Void)?
 
     private let contentStackView = UIStackView()
     private let headerView = UIView()
@@ -25,14 +26,7 @@ final class FeedRecordCardCell: UICollectionViewCell {
     private let streakIconImageView = UIImageView(image: .icFireFill)
     private let moreButton = UIButton(type: .custom)
     private let menuView = FeedRecordMenuView()
-    private let cardView = UIView()
-    private let recordImageView = FeedRecordCardImageView()
-    private let infoStackView = UIStackView()
-    private let firstTitleLabel = MUILabel(style: .c2, color: .gray1, alignment: .left)
-    private let firstValueLabel = MUILabel(style: .b1, color: .systemWhite, alignment: .left)
-    private let secondTitleLabel = MUILabel(style: .c2, color: .gray1, alignment: .left)
-    private let secondValueLabel = MUILabel(style: .b2, color: .systemWhite, alignment: .left)
-    private let arrowButton = UIButton(type: .custom)
+    private let cardView = FeedRecordCardContentView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -48,8 +42,9 @@ final class FeedRecordCardCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         profileImageView.prepareForReuse()
-        recordImageView.prepareForReuse()
+        cardView.prepareForReuse()
         onMenuSelect = nil
+        onRecordTap = nil
         dismissMenu()
     }
 
@@ -77,16 +72,7 @@ final class FeedRecordCardCell: UICollectionViewCell {
         streakChipView.isHidden = viewState.isStreakChipHidden
         moreButton.isHidden = !viewState.showsMoreButton
         menuView.configure(menus: viewState.menus)
-        recordImageView.configureRecord(
-            urlString: viewState.imageUrl,
-            cropRegion: viewState.imageCropRegion,
-            cornerRadius: 16,
-            imageLoader: imageLoader
-        )
-        firstTitleLabel.text = viewState.firstInfoTitle
-        firstValueLabel.text = viewState.firstInfoValue
-        secondTitleLabel.text = viewState.secondInfoTitle
-        secondValueLabel.text = viewState.secondInfoValue
+        cardView.configure(viewState.content, imageLoader: imageLoader)
     }
 
     func dismissMenu() {
@@ -130,15 +116,9 @@ private extension FeedRecordCardCell {
             self?.onMenuSelect?(menu)
         }
 
-        cardView.layer.cornerRadius = 16
-        cardView.clipsToBounds = true
-
-        infoStackView.axis = .vertical
-        infoStackView.spacing = 8
-
-        arrowButton.setImage(.icRightArrow.withRenderingMode(.alwaysTemplate), for: .normal)
-        arrowButton.tintColor = .systemWhite
-        arrowButton.isHidden = true // Phase 3.0 에서 보일 예정
+        cardView.addGestureRecognizer(
+            UITapGestureRecognizer(target: self, action: #selector(didTapCard))
+        )
     }
 
     func setupLayout() {
@@ -154,14 +134,6 @@ private extension FeedRecordCardCell {
         headerView.addSubview(moreButton)
 
         contentView.addSubview(menuView)
-        cardView.addSubview(recordImageView)
-        cardView.addSubview(infoStackView)
-        cardView.addSubview(arrowButton)
-
-        let firstInfoStack = makeInfoStack(titleLabel: firstTitleLabel, valueLabel: firstValueLabel)
-        let secondInfoStack = makeInfoStack(titleLabel: secondTitleLabel, valueLabel: secondValueLabel)
-        infoStackView.addArrangedSubview(firstInfoStack)
-        infoStackView.addArrangedSubview(secondInfoStack)
 
         contentStackView.snp.makeConstraints {
             $0.edges.equalToSuperview()
@@ -213,29 +185,10 @@ private extension FeedRecordCardCell {
         cardView.snp.makeConstraints {
             $0.height.equalTo(200)
         }
-
-        recordImageView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
-        }
-
-        infoStackView.snp.makeConstraints {
-            $0.leading.equalToSuperview().offset(20)
-            $0.trailing.lessThanOrEqualToSuperview().offset(-20)
-            $0.bottom.equalToSuperview().offset(-16)
-        }
-
-        arrowButton.snp.makeConstraints {
-            $0.top.trailing.equalToSuperview().inset(12)
-            $0.size.equalTo(24)
-        }
     }
 
-    func makeInfoStack(titleLabel: UILabel, valueLabel: UILabel) -> UIStackView {
-        let stackView = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
-        stackView.axis = .vertical
-        stackView.spacing = 0
-        stackView.alignment = .leading
-        return stackView
+    @objc func didTapCard() {
+        onRecordTap?()
     }
 
     func toggleMenu() {
