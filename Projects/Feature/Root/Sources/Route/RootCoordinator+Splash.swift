@@ -17,7 +17,10 @@ extension RootCoordinator: SplashRouter {
         case .routeToOnBoarding:
             showOnBoarding()
         case .routeToModyGroup(let showSignUpDoneContents):
-            showModyGroup(showSignUpDoneContents: showSignUpDoneContents)
+            showModyGroup(
+                showSignUpDoneContents: showSignUpDoneContents,
+                entrySource: .relaunch
+            )
         }
     }
 }

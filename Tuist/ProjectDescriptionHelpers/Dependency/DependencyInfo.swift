@@ -129,6 +129,7 @@ public let dependencyInfo: DependencyInfo = DependencyInfo(
                 .microFeature(.CoreNotification),
                 .microFeature(.CoreHealth),
                 .microFeature(.CoreAnalytics),
+                .microFeature(.CoreAuth),
                 .module(.Util)
             ]
         ),

@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import Base
 import CommonDomain
+import CoreAnalyticsInterface
 import Foundation
 import Util
 
@@ -99,7 +100,11 @@ public struct OnBoardingStepFourFeature {
         case timeSheetDismissed
     }
 
-    public init() {}
+    private let analyticsUseCase: AnalyticsUseCaseProtocol
+
+    public init(analyticsUseCase: AnalyticsUseCaseProtocol) {
+        self.analyticsUseCase = analyticsUseCase
+    }
 
     public var body: some ReducerOf<Self> {
         BindingReducer()
@@ -152,7 +157,9 @@ public struct OnBoardingStepFourFeature {
                     default: state.defaultExerciseDate
                 )
                 state.isTimeSheetPresented = true
-                return .none
+                return logExerciseTimeSheet(
+                    .sameTimeClicked(selectedDayCount: state.selectedWeekdays.count, entrySource: .onboarding)
+                )
             case .timeSheetConfirmTapped:
                 guard let target = state.timeSheetTarget else { return .none }
                 switch target {
@@ -166,16 +173,30 @@ public struct OnBoardingStepFourFeature {
                 state.isTimeSheetPresented = false
                 state.timeSheetTarget = nil
                 setExerciseScheduleRequests(&state)
-                return .none
+                guard target == .allExerciseDays else { return .none }
+                return logExerciseTimeSheet(
+                    .exerciseTimeSheetApplied(selectedDayCount: state.selectedWeekdays.count, entrySource: .onboarding)
+                )
             case .timeSheetDismissed:
+                // 적용 후 닫힐 때는 이미 target이 비어 있으므로 적용하지 않고 닫은 경우만 남습니다.
+                let isClosedWithoutApplying = state.timeSheetTarget == .allExerciseDays
                 state.timeSheetTarget = nil
-                return .none
+                guard isClosedWithoutApplying else { return .none }
+                return logExerciseTimeSheet(
+                    .exerciseTimeSheetClosed(selectedDayCount: state.selectedWeekdays.count, entrySource: .onboarding)
+                )
             }
         }
     }
 }
 
 private extension OnBoardingStepFourFeature {
+    func logExerciseTimeSheet(_ event: GoogleAnalyticsEvent) -> Effect<Action> {
+        .run { _ in
+            analyticsUseCase.log(event)
+        }
+    }
+
     func setMealScheduleRequests(_ state: inout State) {
         state.request.mealSchedules = MealScheduleRequest.makeMealScheduleRequests(
             meals: state.meals,

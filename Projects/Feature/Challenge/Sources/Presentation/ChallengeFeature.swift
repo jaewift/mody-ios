@@ -50,6 +50,8 @@ public struct ChallengeFeature {
 
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
+        /// 챌린지 탭에 들어오거나 다른 화면에서 돌아왔을 때
+        case viewDidAppear
         case input(ChallengeInput)
         case challengeStreak(ChallengeStreakFeature.Action)
         case challengeDetail(ChallengeDetailFeature.Action)
@@ -60,6 +62,10 @@ public struct ChallengeFeature {
 
         Reduce { state, action in
             switch action {
+            case .viewDidAppear:
+                return .run { _ in
+                    analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.challengeScreenView)
+                }
             case let .input(.selectedGroupUpdated(group)):
                 state.selectedGroup = group
                 return .merge(

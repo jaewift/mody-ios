@@ -7,4 +7,6 @@
 
 public enum CoreAuthErrorModel: Error {
     case unKnownError
+    /// 사용자가 소셜 로그인을 취소했습니다.
+    case socialLoginCancelled
 }

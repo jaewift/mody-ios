@@ -21,11 +21,11 @@ public struct GoogleAnalyticsEvent: Equatable {
 
 public extension GoogleAnalyticsEvent {
     static func screenView(
-        screenName: String,
+        _ screen: GoogleAnalyticsScreen,
         parameters: [String: String] = [:]
     ) -> GoogleAnalyticsEvent {
         var parameters = parameters
-        parameters[ParameterKey.screenName] = screenName
+        parameters[ParameterKey.screenName] = screen.rawValue
 
         return GoogleAnalyticsEvent(
             name: EventName.screenView,

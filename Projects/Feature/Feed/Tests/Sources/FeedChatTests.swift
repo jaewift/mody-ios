@@ -349,4 +349,5 @@ private struct FeedChatAuthUseCaseMock: AuthUseCaseProtocol {
     func logout() async throws {}
 
     func deleteAccount() async throws {}
+    func getSocialLoginType() -> SocialLoginType? { nil }
 }

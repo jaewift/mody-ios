@@ -31,6 +31,9 @@ public final class FeedReactor: Reactor {
         var groups: [GroupModel] = []
         var selectedGroup: GroupModel?
         var isFetchGroupLoading = false
+        var hasFetchedGroups = false
+        /// 그룹 목록을 받기 전에 화면이 보이면 그룹 수를 알 수 있을 때까지 screen_view를 미룹니다.
+        var isFeedScreenViewPending = false
         var myMemberId: Int?
 
         var feedPage = FeedRecordPage(
@@ -53,6 +56,7 @@ public final class FeedReactor: Reactor {
         case setFloatingActionButtonExpanded(Bool)
         case setGroups([GroupModel], selectedGroup: GroupModel?)
         case setFetchGroupLoading(Bool)
+        case setFeedScreenViewPending(Bool)
         case setMyMemberId(Int?)
         case setInitialFeedLoading(Bool)
         case setNextPageLoading(Bool)
@@ -71,6 +75,8 @@ public final class FeedReactor: Reactor {
     
     public enum Action {
         case viewDidLoad
+        /// 피드 탭에 들어오거나 다른 화면에서 돌아왔을 때
+        case viewDidAppear
         case input(FeedInput)
         case didTapDimmedOverlay
         case didTapFloatingActionButton
@@ -135,6 +141,12 @@ public final class FeedReactor: Reactor {
         switch action {
         case .viewDidLoad:
             return fetchInitialContent()
+        case .viewDidAppear:
+            guard currentState.hasFetchedGroups else {
+                return .just(.setFeedScreenViewPending(true))
+            }
+            logFeedScreenView(groupCount: currentState.groups.count)
+            return .empty()
         case .input(.refreshGroups):
             return fetchGroupsWithLoading()
         case let .input(.reportConfirmed(recordId)):
@@ -285,6 +297,9 @@ public final class FeedReactor: Reactor {
         case let .setGroups(groups, selectedGroup):
             newState.groups = groups
             newState.selectedGroup = selectedGroup
+            newState.hasFetchedGroups = true
+        case .setFeedScreenViewPending(let isPending):
+            newState.isFeedScreenViewPending = isPending
         case .setFetchGroupLoading(let isLoading):
             newState.isFetchGroupLoading = isLoading
         case .setMyMemberId(let memberId):
@@ -675,8 +690,26 @@ private extension FeedReactor {
                 $0.groupId == self.currentState.selectedGroup?.groupId
             } ?? groups.first
 
-            return self.setGroup(selectedGroup, in: groups)
+            return .concat([
+                self.setGroup(selectedGroup, in: groups),
+                self.logPendingFeedScreenView(groupCount: groups.count)
+            ])
         }
+    }
+
+    func logPendingFeedScreenView(groupCount: Int) -> Observable<Mutation> {
+        .deferred { [weak self] in
+            guard let self, self.currentState.isFeedScreenViewPending else {
+                return .empty()
+            }
+
+            self.logFeedScreenView(groupCount: groupCount)
+            return .just(.setFeedScreenViewPending(false))
+        }
+    }
+
+    func logFeedScreenView(groupCount: Int) {
+        analyticsUseCase.log(FeedGoogleAnalyticsEvent.feedScreenView(groupCount: groupCount))
     }
 
     func fetchMyMemberId() -> Observable<Mutation> {

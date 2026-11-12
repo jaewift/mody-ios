@@ -23,6 +23,7 @@ public struct ModyGroupBuilder: ModyGroupBuildable {
     @MainActor
     public func makeModyGroupViewController(
         entryPoint: ModyGroupEntryPoint,
+        entrySource: ModyGroupEntrySource,
         showSignUpDoneContents: Bool,
         initialScreen: ModyGroupInitialScreen,
         router: ModyGroupRouter,
@@ -32,6 +33,7 @@ public struct ModyGroupBuilder: ModyGroupBuildable {
             store: .init(
                 initialState: .init(
                     entryPoint: entryPoint,
+                    entrySource: entrySource,
                     showSignUpDoneContents: showSignUpDoneContents,
                     initialScreen: initialScreen
                 )

@@ -9,19 +9,23 @@ import Base
 import ChallengeInterface
 import CommonDomain
 import ComposableArchitecture
+import CoreAnalyticsInterface
 
 @Reducer
 public struct ChallengeChangeFeature {
     private let challengeUseCase: ChallengeUseCase
+    private let analyticsUseCase: AnalyticsUseCaseProtocol
     private let router: @MainActor (ChallengeChangeRoute) -> Void
     private let output: @MainActor (ChallengeOutput) -> Void
 
     public init(
         challengeUseCase: ChallengeUseCase,
+        analyticsUseCase: AnalyticsUseCaseProtocol,
         router: @escaping @MainActor (ChallengeChangeRoute) -> Void,
         output: @escaping @MainActor (ChallengeOutput) -> Void
     ) {
         self.challengeUseCase = challengeUseCase
+        self.analyticsUseCase = analyticsUseCase
         self.router = router
         self.output = output
     }
@@ -76,6 +80,7 @@ public struct ChallengeChangeFeature {
                 state.isLoading = true
                 let groupId = state.groupId
                 return .run { send in
+                    analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.challengeChangeScreenView)
                     await send(fetchChangableChallengeList(groupId: groupId))
                 }
             case let .changableChallengeListFetched(challengeList):
@@ -99,11 +104,16 @@ public struct ChallengeChangeFeature {
 
                 state.isLoading = true
                 let groupId = state.groupId
+                let previousChallenge = state.changableChallengeList.first(where: \.selected)
                 return .merge(
                     .send(.alertAction(.dismiss)),
                     .run { send in
                         await send(
-                            changeStepChallenge(groupId: groupId, challengeId: id)
+                            changeStepChallenge(
+                                groupId: groupId,
+                                from: previousChallenge,
+                                to: challenge
+                            )
                         )
                     }
                 )
@@ -134,11 +144,21 @@ private extension ChallengeChangeFeature {
         }
     }
 
-    func changeStepChallenge(groupId: Int, challengeId: Int) async -> Action {
+    func changeStepChallenge(
+        groupId: Int,
+        from previousChallenge: ChangableWalkChallengeModel?,
+        to challenge: ChangableWalkChallengeModel
+    ) async -> Action {
         do {
             try await challengeUseCase.changeStepChallenge(
                 groupId: groupId,
-                challengeId: challengeId
+                challengeId: challenge.challengeId
+            )
+            analyticsUseCase.log(
+                ChallengeGoogleAnalyticsEvent.challengeChanged(
+                    from: previousChallenge?.walkChallengeGroup.rawValue,
+                    to: challenge.walkChallengeGroup.rawValue
+                )
             )
             return .challengeChanged
         } catch {

@@ -383,6 +383,53 @@ final class FeedReactorPaginationTests: XCTestCase {
         )
     }
 
+    func testFeedAppearBeforeGroupsLoadedLogsScreenViewAfterGroupsFetched() async {
+        let analyticsUseCase = FeedAnalyticsUseCaseSpy()
+        let reactor = makeReactor(
+            feedRepository: FeedPaginationRepositoryMock(pages: [makePage(recordIDs: [1], nextCursor: nil, hasNext: false)]),
+            outputHandler: FeedOutputHandlerSpy(),
+            analyticsUseCase: analyticsUseCase
+        )
+        let screenViewLogged = expectation(description: "feed screen view logged")
+        reactor.state
+            .filter { $0.hasFetchedGroups && !$0.isFeedScreenViewPending }
+            .take(1)
+            .subscribe(onNext: { _ in screenViewLogged.fulfill() })
+            .disposed(by: disposeBag)
+
+        reactor.action.onNext(.viewDidAppear)
+        XCTAssertTrue(analyticsUseCase.googleAnalyticsEvents.isEmpty)
+
+        reactor.action.onNext(.viewDidLoad)
+        await fulfillment(of: [screenViewLogged], timeout: 1)
+
+        XCTAssertEqual(
+            analyticsUseCase.googleAnalyticsEvents,
+            [GoogleAnalyticsEvent(name: "screen_view", parameters: ["screen_name": "Feed", "group_count": "1"])]
+        )
+    }
+
+    func testFeedAppearAfterGroupsLoadedLogsScreenViewImmediately() async {
+        let analyticsUseCase = FeedAnalyticsUseCaseSpy()
+        let reactor = makeReactor(
+            feedRepository: FeedPaginationRepositoryMock(pages: [makePage(recordIDs: [1], nextCursor: nil, hasNext: false)]),
+            outputHandler: FeedOutputHandlerSpy(),
+            analyticsUseCase: analyticsUseCase
+        )
+        await loadInitialContent(of: reactor)
+
+        reactor.action.onNext(.viewDidAppear)
+        reactor.action.onNext(.viewDidAppear)
+
+        XCTAssertEqual(
+            analyticsUseCase.googleAnalyticsEvents,
+            Array(
+                repeating: GoogleAnalyticsEvent(name: "screen_view", parameters: ["screen_name": "Feed", "group_count": "1"]),
+                count: 2
+            )
+        )
+    }
+
     func testNudgeButtonTapLogsPokeCTAClick() {
         let analyticsUseCase = FeedAnalyticsUseCaseSpy()
         let reactor = makeReactor(
@@ -598,6 +645,7 @@ private struct FeedPaginationAuthUseCaseMock: AuthUseCaseProtocol {
     func logout() async throws {}
 
     func deleteAccount() async throws {}
+    func getSocialLoginType() -> SocialLoginType? { nil }
 }
 
 private struct FeedPaginationGroupUseCaseMock: GroupUseCaseProtocol {

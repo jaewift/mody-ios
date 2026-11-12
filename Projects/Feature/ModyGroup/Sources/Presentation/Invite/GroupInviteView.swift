@@ -23,6 +23,9 @@ public struct GroupInviteView: View {
             .background(Color.systemWhite)
             .navigationBarBackButtonHidden()
             .mLoading(isPresent: store.isLoading)
+            .onAppear {
+                store.send(.onAppear)
+            }
     }
 
     private var inviteBody: some View {

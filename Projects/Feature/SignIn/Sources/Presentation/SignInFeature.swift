@@ -91,7 +91,9 @@ public struct SignInFeature {
                 return .send(.alertAction(.present))
             case .onAppear:
                 state.isDemoLoginEnabled = signInUseCase.isDemoLoginEnabled()
-                return .none
+                return .run { _ in
+                    analyticsUseCase.log(SignInGoogleAnalyticsEvent.loginScreenView)
+                }
             case .demoLoginTriggerAreaTapped:
                 guard state.isDemoLoginEnabled, !state.isLoading else {
                     return .none
@@ -149,6 +151,9 @@ public struct SignInFeature {
                     analyticsUseCase.log(
                         SignInAnalyticsEvent.loginSucceeded(method: method)
                     )
+                    if let method {
+                        analyticsUseCase.log(SignInGoogleAnalyticsEvent.loginSucceeded(method: method))
+                    }
 
                     if session.personalInfoCompleted,
                        let userInfo = try? await authUseCase.getUserInfo(needUpdateKeyChain: false) {
@@ -191,6 +196,7 @@ private extension SignInFeature {
     func signInWithKakao() async -> Action {
         do {
             guard let accessToken = try await socialLoginUseCase.signInWithKakao() else {
+                logLoginFailure(method: .kakao, error: nil)
                 return .kakaoLoginError(.unknown)
             }
 
@@ -202,6 +208,7 @@ private extension SignInFeature {
             return .receiveLoginSessionSuccessfully(session)
         } catch {
             ModyLogger.debug("Kakao login failed: \(error)")
+            logLoginFailure(method: .kakao, error: error)
             return .kakaoLoginError(error as? NetworkError ?? .unknown)
         }
     }
@@ -209,6 +216,7 @@ private extension SignInFeature {
     func signInWithApple() async -> Action {
         do {
             guard let accessToken = try await socialLoginUseCase.signInWithApple() else {
+                logLoginFailure(method: .apple, error: nil)
                 return .appleLoginError(.unknown)
             }
 
@@ -220,8 +228,23 @@ private extension SignInFeature {
             return .receiveLoginSessionSuccessfully(session)
         } catch {
             ModyLogger.debug("Apple login failed: \(error)")
+            logLoginFailure(method: .apple, error: error)
             return .appleLoginError(error as? NetworkError ?? .unknown)
         }
+    }
+
+    /// 소셜 로그인 취소는 cancel, SDK·서버 오류는 error로 보냅니다.
+    func logLoginFailure(method: SocialLoginType, error: Error?) {
+        let reason: SignInGoogleAnalyticsEvent.LoginFailReason
+        if case .socialLoginCancelled = error as? CoreAuthErrorModel {
+            reason = .cancel
+        } else {
+            reason = .error
+        }
+
+        analyticsUseCase.log(
+            SignInGoogleAnalyticsEvent.loginFailed(method: method, reason: reason)
+        )
     }
 
     func signInWithDemo() async -> Action {

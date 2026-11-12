@@ -57,9 +57,11 @@ extension AppAssembly {
         ) in
             let (router, outputHandler) = arguments
             let challengeUseCase: ChallengeUseCase = resolver.resolve()
+            let analyticsUseCase: AnalyticsUseCaseProtocol = resolver.resolve()
 
             return ChallengeChangeFeature(
                 challengeUseCase: challengeUseCase,
+                analyticsUseCase: analyticsUseCase,
                 router: { [weak router] route in
                     router?.route(from: route)
                 },

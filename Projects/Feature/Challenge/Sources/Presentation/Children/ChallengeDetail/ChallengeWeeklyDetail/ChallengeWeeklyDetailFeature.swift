@@ -131,10 +131,13 @@ public struct ChallengeWeeklyDetailFeature {
                 state.alertCase = alertCase
                 return .send(.alertAction(.present))
             case .onAppear:
+                let screenViewEffect: Effect<Action> = .run { _ in
+                    analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.weeklyChallengeScreenView)
+                }
                 guard state.myMemberId == nil,
                       state.weeklyChallengeDetail == nil,
                       state.weeklyChallengeImageInfos == nil else {
-                    return .none
+                    return screenViewEffect
                 }
 
                 state.isLoading = true
@@ -142,7 +145,7 @@ public struct ChallengeWeeklyDetailFeature {
                 let challengeId = state.challengeId
                 let groupChallengeId = state.groupChallengeId
 
-                return .run { send in
+                return .merge(screenViewEffect, .run { send in
                     do {
                         try await fetchInitialData(
                             send: send,
@@ -153,7 +156,7 @@ public struct ChallengeWeeklyDetailFeature {
                     } catch {
                         await send(.showAlert(.error(error as? NetworkError ?? .unknown)))
                     }
-                }
+                })
             case let .initialDataFetched(memberId, detail, imageInfos):
                 state.isLoading = false
                 state.myMemberId = memberId
@@ -219,6 +222,7 @@ public struct ChallengeWeeklyDetailFeature {
 
                 return .run { send in
                     analyticsUseCase.log(ChallengeAnalyticsEvent.challengeShareClicked)
+                    analyticsUseCase.log(ChallengeGoogleAnalyticsEvent.weeklyChallengeShared)
                     do {
                         let share = try await challengeUseCase.shareWeeklyChallenge(
                             groupId: groupId,

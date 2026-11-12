@@ -10,6 +10,7 @@ import OnBoardingInterface
 import CommonDomain
 import Foundation
 import CoreAnalyticsInterface
+import CoreAuthInterface
 import CoreCameraInterface
 import CoreNotificationInterface
 import CoreHealthInterface
@@ -23,6 +24,7 @@ public struct OnBoardingFeature {
     private let notificationPermission: NotificationPermissionInterface
     private let healthPermission: HealthPermissionInterface
     private let analyticsUseCase: AnalyticsUseCaseProtocol
+    private let authUseCase: AuthUseCaseProtocol
     private let router: @MainActor (OnBoardingRoute) -> Void
 
     public init(
@@ -31,6 +33,7 @@ public struct OnBoardingFeature {
         notificationPermission: NotificationPermissionInterface,
         healthPermission: HealthPermissionInterface,
         analyticsUseCase: AnalyticsUseCaseProtocol,
+        authUseCase: AuthUseCaseProtocol,
         router: @escaping @MainActor (OnBoardingRoute) -> Void
     ) {
         self.onBoardingUseCase = onBoardingUseCase
@@ -38,6 +41,7 @@ public struct OnBoardingFeature {
         self.notificationPermission = notificationPermission
         self.healthPermission = healthPermission
         self.analyticsUseCase = analyticsUseCase
+        self.authUseCase = authUseCase
         self.router = router
     }
     
@@ -97,6 +101,19 @@ public struct OnBoardingFeature {
             }
         }
 
+        /// 지금 보이는 온보딩 화면의 GA4 화면명
+        var analyticsScreen: GoogleAnalyticsScreen {
+            guard stage == .steps else { return .terms }
+
+            switch currentStep {
+            case .one: return .nickname
+            case .two: return .birth
+            case .three: return .weight
+            case .four: return .alarm
+            case .permission: return .permission
+            }
+        }
+
         var showsStepIndicator: Bool {
             stage == .steps && currentStep != .permission
         }
@@ -127,6 +144,8 @@ public struct OnBoardingFeature {
         case path(StackActionOf<OnBoardingPath>)
         case alertAction(AlertFeature.Action)
         case showAlert(State.AlertCase)
+        /// 온보딩 첫 화면이 보이거나 약관 전문에서 돌아왔을 때
+        case onAppear
         case allAgreementTapped
         case privacyPolicyAgreementTapped
         case termsOfServiceAgreementTapped
@@ -162,7 +181,7 @@ public struct OnBoardingFeature {
         }
 
         Scope(state: \.stepFour, action: \.stepFour) {
-            OnBoardingStepFourFeature()
+            OnBoardingStepFourFeature(analyticsUseCase: analyticsUseCase)
         }
 
         Reduce { state, action in
@@ -174,6 +193,8 @@ public struct OnBoardingFeature {
                 return .none
             case .alertAction:
                 return .none
+            case .onAppear:
+                return logScreenView(state.analyticsScreen)
             case let .showAlert(alertCase):
                 state.isLoading = false
                 state.alertCase = alertCase
@@ -183,7 +204,12 @@ public struct OnBoardingFeature {
 
                 if state.stage == .agreement {
                     state.stage = .steps
-                    return .none
+                    return .merge(
+                        .run { _ in
+                            analyticsUseCase.log(OnBoardingGoogleAnalyticsEvent.termsStepCompleted)
+                        },
+                        logScreenView(state.analyticsScreen)
+                    )
                 }
 
                 if state.currentStep == .permission {
@@ -218,12 +244,18 @@ public struct OnBoardingFeature {
                 state.isLoading = false
                 state.currentStep = .permission
                 let nickname = state.request.nickname
-                return .run { _ in
-                    analyticsUseCase.setUserID(String(memberID))
-                    if let nickname {
-                        analyticsUseCase.setUserNickname(nickname)
-                    }
-                }
+                return .merge(
+                    .run { _ in
+                        analyticsUseCase.setUserID(String(memberID))
+                        if let nickname {
+                            analyticsUseCase.setUserNickname(nickname)
+                        }
+                        if let method = authUseCase.getSocialLoginType() {
+                            analyticsUseCase.log(OnBoardingGoogleAnalyticsEvent.signedUp(method: method))
+                        }
+                    },
+                    logScreenView(state.analyticsScreen)
+                )
             case let .setupProfileFailure(error):
                 return .send(.showAlert(.error(error)))
             case .requestPermissions:
@@ -231,7 +263,7 @@ public struct OnBoardingFeature {
                 state.isPermissionRequesting = true
 
                 return .run { send in
-                    _ = await notificationPermission.requestNotificationPermission()
+                    await requestNotificationPermission()
                     _ = await cameraPermission.requestCameraPermission()
                     if await healthPermission.shouldShowHealthPermissionPrompt() {
                         _ = await healthPermission.requestHealthPermission()
@@ -258,7 +290,7 @@ public struct OnBoardingFeature {
                 return .none
             case let .agreementDetailTapped(document):
                 state.path.append(.agreementDetail(.init(document: document)))
-                return .none
+                return logScreenView(.termsDetail)
             }
         }
         .forEach(\.path, action: \.path)
@@ -288,17 +320,34 @@ private extension OnBoardingFeature {
         birthDate.toString(format: .yyyyMMdd)
     }
 
+    func logScreenView(_ screen: GoogleAnalyticsScreen) -> Effect<Action> {
+        .run { _ in
+            analyticsUseCase.log(.screenView(screen))
+        }
+    }
+
+    /// 시스템 알림 팝업이 실제로 뜰 때만 응답을 기록합니다. 이미 결정된 경우는 새 응답이 아니므로 보내지 않습니다.
+    func requestNotificationPermission() async {
+        let isNotDetermined = await notificationPermission.isNotificationPermissionNotDetermined()
+        let isGranted = await notificationPermission.requestNotificationPermission()
+        guard isNotDetermined else { return }
+
+        analyticsUseCase.log(
+            OnBoardingGoogleAnalyticsEvent.notificationPermissionResult(isGranted ? .granted : .denied)
+        )
+    }
+
     func moveNext(from state: inout State) -> Effect<Action> {
         switch state.currentStep {
         case .one:
             state.currentStep = .two
-            return .none
+            return logScreenView(state.analyticsScreen)
         case .two:
             state.currentStep = .three
-            return .none
+            return logScreenView(state.analyticsScreen)
         case .three:
             state.currentStep = .four
-            return .none
+            return logScreenView(state.analyticsScreen)
         case .four:
             return .send(.setUpProfile)
         case .permission:

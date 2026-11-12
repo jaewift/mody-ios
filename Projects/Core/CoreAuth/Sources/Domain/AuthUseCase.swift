@@ -36,4 +36,8 @@ public struct AuthUseCase: AuthUseCaseProtocol {
     public func deleteAccount() async throws {
         try await authRepository.deleteAccount()
     }
+
+    public func getSocialLoginType() -> SocialLoginType? {
+        authRepository.getSocialLoginType()
+    }
 }

@@ -8,6 +8,10 @@
 import CoreAnalyticsInterface
 
 enum FeedGoogleAnalyticsEvent {
+    static func feedScreenView(groupCount: Int) -> GoogleAnalyticsEvent {
+        .screenView(.feed, parameters: ["group_count": String(groupCount)])
+    }
+
     static func groupSelectorClicked(groupCount: Int) -> GoogleAnalyticsEvent {
         GoogleAnalyticsEvent(
             name: "group_selector_click",

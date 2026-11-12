@@ -26,11 +26,29 @@ public final class CoreKakaoAuthService: CoreKakaoAuthInterface {
 
             return token.accessToken
         } catch let error as SdkError {
+            if error.isCancelledByUser {
+                throw CoreKakaoAuthError.cancelled
+            }
             print("TODO: Handle Kakao SDK login error: \(error)")
             throw error
         } catch {
             print("TODO: Handle unknown Kakao login error: \(error)")
             throw error
         }
+    }
+}
+
+private extension SdkError {
+    /// 카카오계정 로그인은 `Cancelled`, 카카오톡 로그인은 `AccessDenied`로 취소를 알려줍니다.
+    var isCancelledByUser: Bool {
+        if isClientFailed {
+            return getClientError().reason == .Cancelled
+        }
+
+        if isAuthFailed {
+            return getAuthError().reason == .AccessDenied
+        }
+
+        return false
     }
 }

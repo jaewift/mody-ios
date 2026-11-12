@@ -10,19 +10,24 @@ import ModyGroupInterface
 @MainActor
 extension MainCoordinator {
     func showGroupParticipate() {
-        showModyGroup(initialScreen: .participate)
+        showModyGroup(entrySource: .feed, initialScreen: .participate)
     }
 
     func showGroupCreate(needBackButton: Bool) {
-        showModyGroup(initialScreen: .create(needBackButton: needBackButton))
+        showModyGroup(
+            entrySource: .feed,
+            initialScreen: .create(needBackButton: needBackButton)
+        )
     }
 
     func showModyGroup(
         entryPoint: ModyGroupEntryPoint = .main,
+        entrySource: ModyGroupEntrySource,
         initialScreen: ModyGroupInitialScreen
     ) {
         let viewController = modyGroupBuilder.makeModyGroupViewController(
             entryPoint: entryPoint,
+            entrySource: entrySource,
             showSignUpDoneContents: false,
             initialScreen: initialScreen,
             router: self,

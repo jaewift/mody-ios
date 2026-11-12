@@ -30,6 +30,11 @@ final class ChallengeHostingController: UIHostingController<ChallengeView>, Chal
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        store.send(.viewDidAppear)
+    }
+
     func handle(input: ChallengeInput) {
         store.send(.input(input))
     }

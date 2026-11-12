@@ -5,6 +5,7 @@
 //  Created by 김동준 on 7/17/26
 //
 
+import ModyGroupInterface
 import MyPageInterface
 
 @MainActor
@@ -16,6 +17,7 @@ extension MainCoordinator: MyPageGroupSettingsRouter {
         case .routeToGroupParticipate:
             showModyGroup(
                 entryPoint: .groupSettings,
+                entrySource: .rejoin,
                 initialScreen: .participate
             )
         }

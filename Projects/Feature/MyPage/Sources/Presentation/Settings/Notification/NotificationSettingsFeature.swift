@@ -288,7 +288,9 @@ public struct NotificationSettingsFeature {
                 state.timeSheetTarget = .allExerciseDays
                 state.timeSheetDate = state.exerciseSchedules.date(for: firstDay, default: state.defaultExerciseDate)
                 state.isTimeSheetPresented = true
-                return .none
+                return logExerciseTimeSheet(
+                    .sameTimeClicked(selectedDayCount: state.selectedWeekdays.count, entrySource: .mypage)
+                )
             case .timeSheetConfirmTapped:
                 guard let target = state.timeSheetTarget else { return .none }
                 var exerciseSchedules = state.exerciseSchedules
@@ -312,10 +314,18 @@ public struct NotificationSettingsFeature {
                 )
                 state.isTimeSheetPresented = false
                 state.timeSheetTarget = nil
-                return .none
+                guard target == .allExerciseDays else { return .none }
+                return logExerciseTimeSheet(
+                    .exerciseTimeSheetApplied(selectedDayCount: state.selectedWeekdays.count, entrySource: .mypage)
+                )
             case .timeSheetDismissed:
+                // 적용 후 닫힐 때는 이미 target이 비어 있으므로 적용하지 않고 닫은 경우만 남습니다.
+                let isClosedWithoutApplying = state.timeSheetTarget == .allExerciseDays
                 state.timeSheetTarget = nil
-                return .none
+                guard isClosedWithoutApplying else { return .none }
+                return logExerciseTimeSheet(
+                    .exerciseTimeSheetClosed(selectedDayCount: state.selectedWeekdays.count, entrySource: .mypage)
+                )
             case .saveButtonTapped:
                 guard state.isSaveButtonEnabled else { return .none }
                 let mealSchedules = state.notificationSetting.mealSchedules
@@ -361,6 +371,12 @@ public struct NotificationSettingsFeature {
 }
 
 private extension NotificationSettingsFeature {
+    func logExerciseTimeSheet(_ event: GoogleAnalyticsEvent) -> Effect<Action> {
+        .run { _ in
+            analyticsUseCase.log(event)
+        }
+    }
+
     func currentNotificationPermissionIsGranted() async -> Bool {
         let isNotDetermined = await notificationPermission.isNotificationPermissionNotDetermined()
         if isNotDetermined {

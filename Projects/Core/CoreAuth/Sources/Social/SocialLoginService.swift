@@ -18,7 +18,11 @@ public final class SocialLoginService: SocialLoginInterface {
 
     @MainActor
     public func signInWithKakao() async throws -> String? {
-        try await kakaoAuthService.signInWithKakao()
+        do {
+            return try await kakaoAuthService.signInWithKakao()
+        } catch CoreKakaoAuthError.cancelled {
+            throw CoreAuthErrorModel.socialLoginCancelled
+        }
     }
 
     @MainActor

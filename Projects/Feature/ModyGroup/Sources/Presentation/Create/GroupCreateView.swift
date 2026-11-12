@@ -32,6 +32,7 @@ public struct GroupCreateView: View {
             }
             .onAppear {
                 isNameFieldFocused = true
+                store.send(.onAppear)
             }
     }
     

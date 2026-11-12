@@ -20,6 +20,12 @@ extension AuthRepository {
         ]
     }
 
+    public func getSocialLoginType() -> SocialLoginType? {
+        try? keyChainStorage.read(
+            key: KeyChainStorageKey.socialLoginType.rawValue
+        )
+    }
+
     func readRefreshTokenFromKeyChain() throws -> String {
         try keyChainStorage.read(
             key: KeyChainStorageKey.refreshToken.rawValue

@@ -9,6 +9,7 @@ import Swinject
 import OnBoardingInterface
 import OnBoarding
 import CoreAnalyticsInterface
+import CoreAuthInterface
 import CoreCameraInterface
 import CoreNetworkInterface
 import CoreNotificationInterface
@@ -34,13 +35,15 @@ extension AppAssembly {
             let notificationPermission: NotificationPermissionInterface = resolver.resolve()
             let healthPermission: HealthPermissionInterface = resolver.resolve()
             let analyticsUseCase: AnalyticsUseCaseProtocol = resolver.resolve()
+            let authUseCase: AuthUseCaseProtocol = resolver.resolve()
 
             return OnBoardingFeature(
                 onBoardingUseCase: onBoardingUseCase,
                 cameraPermission: cameraPermission,
                 notificationPermission: notificationPermission,
                 healthPermission: healthPermission,
-                analyticsUseCase: analyticsUseCase
+                analyticsUseCase: analyticsUseCase,
+                authUseCase: authUseCase
             ) { [weak router] route in
                 router?.route(from: route)
             }

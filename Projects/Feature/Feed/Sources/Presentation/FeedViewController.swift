@@ -106,6 +106,11 @@ public final class FeedViewController: UIViewController, View {
         setupLayout()
         reactor?.action.onNext(.viewDidLoad)
     }
+
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        reactor?.action.onNext(.viewDidAppear)
+    }
     
     public func bind(reactor: FeedReactor) {
         floatingActionButton.rx.tap

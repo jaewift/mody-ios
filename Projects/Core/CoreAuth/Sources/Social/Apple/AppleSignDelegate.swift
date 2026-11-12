@@ -40,7 +40,11 @@ extension AppleSignDelegate: ASAuthorizationControllerDelegate {
         controller: ASAuthorizationController,
         didCompleteWithError error: Error
     ) {
-        continuation?.resume(throwing: error)
+        if (error as? ASAuthorizationError)?.code == .canceled {
+            continuation?.resume(throwing: CoreAuthErrorModel.socialLoginCancelled)
+        } else {
+            continuation?.resume(throwing: error)
+        }
         continuation = nil
     }
 }

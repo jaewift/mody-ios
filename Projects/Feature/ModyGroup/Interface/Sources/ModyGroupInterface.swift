@@ -11,6 +11,7 @@ public protocol ModyGroupBuildable {
     @MainActor
     func makeModyGroupViewController(
         entryPoint: ModyGroupEntryPoint,
+        entrySource: ModyGroupEntrySource,
         showSignUpDoneContents: Bool,
         initialScreen: ModyGroupInitialScreen,
         router: ModyGroupRouter,

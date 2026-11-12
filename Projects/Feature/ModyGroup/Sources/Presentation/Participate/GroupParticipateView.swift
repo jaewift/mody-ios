@@ -26,6 +26,9 @@ public struct GroupParticipateView: View {
             .mAlert(store.scope(state: \.alertState, action: \.alertAction)) {
                 alertView
             }
+            .onAppear {
+                store.send(.onAppear)
+            }
     }
     
     private var participateBody: some View {

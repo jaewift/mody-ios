@@ -20,6 +20,7 @@ public struct OnBoardingView: View {
     public var body: some View {
         NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             onBoardingBody
+                .onAppear { store.send(.onAppear) }
         } destination: { store in
             OnBoardingPathView(store: store)
         }

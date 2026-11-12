@@ -34,6 +34,7 @@ public struct GroupParticipateFeature {
             }
         }
         
+        let entrySource: ModyGroupEntrySource
         let showSignUpDoneContents: Bool
         let showsBackButton: Bool
         var inviteCode: String = ""
@@ -52,9 +53,11 @@ public struct GroupParticipateFeature {
         }
         
         public init(
+            entrySource: ModyGroupEntrySource,
             showSignUpDoneContents: Bool,
             showsBackButton: Bool
         ) {
+            self.entrySource = entrySource
             self.showSignUpDoneContents = showSignUpDoneContents
             self.showsBackButton = showsBackButton
         }
@@ -64,6 +67,7 @@ public struct GroupParticipateFeature {
         case binding(BindingAction<State>)
         case alertAction(AlertFeature.Action)
         case showAlert(State.AlertCase)
+        case onAppear
         case backButtonTapped
         case participateButtonTapped
         case createButtonTapped
@@ -97,6 +101,11 @@ public struct GroupParticipateFeature {
             switch action {
             case .binding:
                 return .none
+            case .onAppear:
+                let entrySource = state.entrySource
+                return .run { _ in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupJoinScreenView(entrySource: entrySource))
+                }
             case .alertAction(.dismiss):
                 state.alertCase = nil
                 return .none
@@ -123,34 +132,63 @@ public struct GroupParticipateFeature {
                 }
             case .joinGroupSuccessfully:
                 state.isLoading = false
+                let entrySource = state.entrySource
                 return .run { _ in
                     analyticsUseCase.log(
                         ModyGroupAnalyticsEvent.membershipSucceeded(action: "join")
                     )
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupJoined(entrySource: entrySource))
                 }
             case let .joinGroupFailure(error, code):
                 state.isLoading = false
-                guard state.inviteCode == code else { return .none }
+                let logJoinFailure = logJoinFailure(error, entrySource: state.entrySource)
+                guard state.inviteCode == code else { return logJoinFailure }
                 
                 guard case let .serverError(code, _, fallback) = error else {
-                    return .send(.showAlert(.error(error)))
+                    return .merge(logJoinFailure, .send(.showAlert(.error(error))))
                 }
                 
                 switch code {
                 case ServerErrorCode.group301.code:
                     state.joinError = .notFound
-                    return .none
+                    return logJoinFailure
                 case ServerErrorCode.group304.code:
                     state.joinError = .groupLimitExceeded
-                    return .none
+                    return logJoinFailure
                 default:
-                    return .send(.showAlert(.error(fallback)))
+                    return .merge(logJoinFailure, .send(.showAlert(.error(fallback))))
                 }                
             case .backButtonTapped:
                 return .none
             case .createButtonTapped:
-                return .none
+                let entrySource = state.entrySource
+                return .run { _ in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupCreateClicked(entrySource: entrySource))
+                }
             }
+        }
+    }
+}
+
+private extension GroupParticipateFeature {
+    func logJoinFailure(
+        _ error: NetworkError,
+        entrySource: ModyGroupEntrySource
+    ) -> Effect<Action> {
+        let reason: ModyGroupGoogleAnalyticsEvent.JoinFailReason
+        switch error {
+        case .serverError(ServerErrorCode.group301.code, _, _):
+            reason = .invalidCode
+        case .serverError(ServerErrorCode.group304.code, _, _):
+            reason = .groupFull
+        default:
+            reason = .error
+        }
+
+        return .run { _ in
+            analyticsUseCase.log(
+                ModyGroupGoogleAnalyticsEvent.groupJoinFailed(reason: reason, entrySource: entrySource)
+            )
         }
     }
 }

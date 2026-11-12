@@ -40,6 +40,7 @@ public struct GroupInviteFeature {
     
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
+        case onAppear
         case backButtonTapped
         case copyButtonTapped
         case copyMessageExpired
@@ -56,6 +57,10 @@ public struct GroupInviteFeature {
             switch action {
             case .binding:
                 return .none
+            case .onAppear:
+                return .run { _ in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.codeShareScreenView)
+                }
             case .copyButtonTapped:
                 guard !state.inviteCode.isEmpty else { return .none }
                 state.isCodeCopied = true

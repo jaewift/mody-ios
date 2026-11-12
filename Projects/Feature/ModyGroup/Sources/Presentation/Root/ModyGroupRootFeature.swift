@@ -33,22 +33,26 @@ public struct ModyGroupRootFeature {
     @ObservableState
     public struct State: Equatable {
         let entryPoint: ModyGroupEntryPoint
+        let entrySource: ModyGroupEntrySource
         let showSignUpDoneContents: Bool
         let initialScreen: ModyGroupInitialScreen
         
         var path: StackState<ModyGroupPath.State> = .init()
         var groupParticipateState: GroupParticipateFeature.State
-        var groupCreateState: GroupCreateFeature.State = .init()
+        var groupCreateState: GroupCreateFeature.State
 
         public init(
             entryPoint: ModyGroupEntryPoint,
+            entrySource: ModyGroupEntrySource,
             showSignUpDoneContents: Bool,
             initialScreen: ModyGroupInitialScreen
         ) {
             self.entryPoint = entryPoint
+            self.entrySource = entrySource
             self.showSignUpDoneContents = showSignUpDoneContents
             self.initialScreen = initialScreen
             self.groupParticipateState = .init(
+                entrySource: entrySource,
                 showSignUpDoneContents: showSignUpDoneContents,
                 showsBackButton: entryPoint == .main
             )
@@ -59,7 +63,10 @@ public struct ModyGroupRootFeature {
             case let .create(needBackButton):
                 createNeedsBackButton = needBackButton
             }
-            self.groupCreateState = .init(showsBackButton: createNeedsBackButton)
+            self.groupCreateState = .init(
+                entrySource: entrySource,
+                showsBackButton: createNeedsBackButton
+            )
         }
     }
     
@@ -125,7 +132,7 @@ private extension ModyGroupRootFeature {
                 await router(.back)
             }
         case .createButtonTapped:
-            state.path.append(.create(.init()))
+            state.path.append(.create(.init(entrySource: state.entrySource)))
             return .none
         case .joinGroupSuccessfully:
             return .run { [output, router] _ in

@@ -22,6 +22,7 @@ public struct GroupCreateFeature {
             case error(NetworkError)
         }
 
+        let entrySource: ModyGroupEntrySource
         let showsBackButton: Bool
         var groupName: String = ""
         var isLoading: Bool = false
@@ -43,7 +44,11 @@ public struct GroupCreateFeature {
             isGroupNameValid == true && !isLoading
         }
 
-        public init(showsBackButton: Bool = true) {
+        public init(
+            entrySource: ModyGroupEntrySource,
+            showsBackButton: Bool = true
+        ) {
+            self.entrySource = entrySource
             self.showsBackButton = showsBackButton
         }
     }
@@ -52,6 +57,7 @@ public struct GroupCreateFeature {
         case binding(BindingAction<State>)
         case alertAction(AlertFeature.Action)
         case showAlert(State.AlertCase)
+        case onAppear
         case backButtonTapped
         case nextButtonTapped
         case createGroupSuccessfully(code: String, groupName: String)
@@ -76,6 +82,10 @@ public struct GroupCreateFeature {
             switch action {
             case .binding:
                 return .none
+            case .onAppear:
+                return .run { _ in
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupCreateScreenView)
+                }
             case .alertAction(.dismiss):
                 state.alertCase = nil
                 return .none
@@ -103,10 +113,12 @@ public struct GroupCreateFeature {
                 }
             case .createGroupSuccessfully:
                 state.isLoading = false
+                let entrySource = state.entrySource
                 return .run { _ in
                     analyticsUseCase.log(
                         ModyGroupAnalyticsEvent.membershipSucceeded(action: "create")
                     )
+                    analyticsUseCase.log(ModyGroupGoogleAnalyticsEvent.groupCreateSucceeded(entrySource: entrySource))
                 }
             case .backButtonTapped:
                 return .none
