@@ -9,7 +9,7 @@ import DesignSystem
 import SnapKit
 import UIKit
 
-final class FeedChatInputView: UIView {
+final class FeedChatInputView: UIView, KeyboardDismissExcluding {
     let textField = UITextField()
     let sendButton = UIButton(type: .custom)
 

@@ -265,12 +265,9 @@ extension FeedChatViewController: UIGestureRecognizerDelegate {
         }
 
         // 메뉴·입력 영역을 누를 때는 메뉴를 닫거나 키보드를 내리지 않습니다.
-        let interactiveViews: [UIView] = [
-            chatView.menuView,
-            chatView.headerView.moreButton,
-            chatView.messageInputView,
-            chatView.emojiBarView
-        ]
-        return !interactiveViews.contains { touchedView === $0 || touchedView.isDescendant(of: $0) }
+        guard !touch.isInKeyboardDismissExcludedView else { return false }
+
+        let menuViews: [UIView] = [chatView.menuView, chatView.headerView.moreButton]
+        return !menuViews.contains { touchedView.isDescendant(of: $0) }
     }
 }

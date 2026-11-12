@@ -5,11 +5,12 @@
 //  Created by Jaewift on 11/11/26.
 //
 
+import DesignSystem
 import SnapKit
 import UIKit
 
 /// iOS 기본 이모지로 구성된 빠른 응원 버튼 목록입니다.
-final class FeedChatEmojiBarView: UIView {
+final class FeedChatEmojiBarView: UIView, KeyboardDismissExcluding {
     private static let emojis = ["👏🏻", "🏅", "🔥", "💛", "🏃"]
 
     var onSelect: ((String) -> Void)?
