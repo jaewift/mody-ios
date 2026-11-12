@@ -41,6 +41,14 @@ actor FeedDemoChatMockRepository: FeedChatRepositoryProtocol {
         nextCommentId += 1
         commentsByRecordId[recordId, default: Self.defaultComments].append(comment)
     }
+
+    func deleteComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws {
+        commentsByRecordId[recordId, default: Self.defaultComments].removeAll { $0.commentId == commentId }
+    }
 }
 
 private extension FeedDemoChatMockRepository {

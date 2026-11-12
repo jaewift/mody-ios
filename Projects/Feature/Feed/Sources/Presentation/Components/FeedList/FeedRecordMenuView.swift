@@ -115,11 +115,6 @@ private extension FeedRecordMenu {
     }
 
     var titleColor: UIColor {
-        switch self {
-        case .report:
-            return .gray10
-        case .delete:
-            return .systemError
-        }
+        .systemError
     }
 }

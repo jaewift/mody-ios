@@ -20,6 +20,8 @@ public final class FeedChatViewController: UIViewController, ReactorKit.View {
     private let chatView = FeedChatView()
     private let imageLoader: RemoteImageLoading
     private var comments: [FeedChatCommentViewState] = []
+    /// 댓글 메뉴를 띄운 댓글입니다.
+    private var selectedCommentId: Int?
 
     var alertHostingController: UIHostingController<MAlertView>?
     var loadingHostingController: UIHostingController<AnyView>?
@@ -81,6 +83,19 @@ private extension FeedChatViewController {
             self?.chatView.menuView.isHidden = true
             reactor?.action.onNext(.didTapRecordMenu(menu))
         }
+
+        // 댓글 메뉴에는 삭제만 있습니다.
+        chatView.commentMenuView.onSelect = { [weak self, weak reactor] _ in
+            guard let self, let commentId = self.selectedCommentId else { return }
+            self.hideCommentMenu()
+            reactor?.action.onNext(.didTapDeleteComment(commentId: commentId))
+        }
+
+        chatView.commentTableView.rx.willBeginDragging
+            .bind(with: self) { owner, _ in
+                owner.hideCommentMenu()
+            }
+            .disposed(by: disposeBag)
 
         chatView.carouselView.onPageChange = { [weak self, weak reactor] page in
             self?.chatView.menuView.isHidden = true
@@ -213,6 +228,8 @@ private extension FeedChatViewController {
         let previousCount = comments.count
         comments = newComments
         chatView.commentTableView.reloadData()
+        // 목록이 바뀌면 메뉴가 가리키던 말풍선 위치도 달라지므로 닫습니다.
+        hideCommentMenu()
 
         // 방금 보낸 내 댓글이 추가된 경우에만 마지막 댓글이 보이도록 이동합니다.
         guard newComments.count > previousCount,
@@ -227,8 +244,21 @@ private extension FeedChatViewController {
         )
     }
 
+    func showCommentMenu(commentId: Int, at bubbleView: UIView) {
+        chatView.menuView.isHidden = true
+        selectedCommentId = commentId
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        chatView.showCommentMenu(at: bubbleView)
+    }
+
+    func hideCommentMenu() {
+        selectedCommentId = nil
+        chatView.commentMenuView.isHidden = true
+    }
+
     @objc func didTapOutsideMenu() {
         chatView.menuView.isHidden = true
+        hideCommentMenu()
         view.endEditing(true)
     }
 }
@@ -249,7 +279,11 @@ extension FeedChatViewController: UITableViewDataSource {
             return UITableViewCell()
         }
 
-        cell.configure(comments[indexPath.row], imageLoader: imageLoader)
+        let comment = comments[indexPath.row]
+        cell.configure(comment, imageLoader: imageLoader)
+        cell.onLongPress = { [weak self] bubbleView in
+            self?.showCommentMenu(commentId: comment.commentId, at: bubbleView)
+        }
         return cell
     }
 }
@@ -267,7 +301,11 @@ extension FeedChatViewController: UIGestureRecognizerDelegate {
         // 메뉴·입력 영역을 누를 때는 메뉴를 닫거나 키보드를 내리지 않습니다.
         guard !touch.isInKeyboardDismissExcludedView else { return false }
 
-        let menuViews: [UIView] = [chatView.menuView, chatView.headerView.moreButton]
+        let menuViews: [UIView] = [
+            chatView.menuView,
+            chatView.commentMenuView,
+            chatView.headerView.moreButton
+        ]
         return !menuViews.contains { touchedView.isDescendant(of: $0) }
     }
 }

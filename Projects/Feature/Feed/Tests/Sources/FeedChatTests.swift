@@ -94,6 +94,41 @@ final class FeedChatTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingCommentIsHiddenAndRestoredOnFailure() {
+        let reactor = makeReactor()
+        var state = reactor.reduce(state: reactor.initialState, mutation: .setRecords(makeRecords(ids: [1])))
+        state = reactor.reduce(
+            state: state,
+            mutation: .setComments([makeComment(id: 1), makeComment(id: 2)], recordId: 1)
+        )
+
+        let deletingState = reactor.reduce(
+            state: state,
+            mutation: .setCommentDeleting(commentId: 2, isDeleting: true)
+        )
+        XCTAssertEqual(deletingState.displayedComments.map(\.commentId), [1])
+
+        let restoredState = reactor.reduce(
+            state: deletingState,
+            mutation: .setCommentDeleting(commentId: 2, isDeleting: false)
+        )
+        XCTAssertEqual(restoredState.displayedComments.map(\.commentId), [1, 2])
+    }
+
+    @MainActor
+    func testDeletedCommentIsRemovedFromCache() {
+        let reactor = makeReactor()
+        var state = reactor.reduce(state: reactor.initialState, mutation: .setRecords(makeRecords(ids: [1])))
+        state = reactor.reduce(state: state, mutation: .setComments([makeComment(id: 1)], recordId: 1))
+        state = reactor.reduce(state: state, mutation: .setCommentDeleting(commentId: 1, isDeleting: true))
+        state = reactor.reduce(state: state, mutation: .removeComment(commentId: 1, recordId: 1))
+
+        XCTAssertTrue(state.comments.isEmpty)
+        XCTAssertTrue(state.deletingCommentIds.isEmpty)
+        XCTAssertTrue(state.isCommentEmpty)
+    }
+
+    @MainActor
     func testCommentEmptyStateAppearsOnlyAfterCommentsAreLoaded() {
         let reactor = makeReactor()
         var state = reactor.reduce(
@@ -265,6 +300,7 @@ private struct FeedChatRepositoryMock: FeedChatRepositoryProtocol {
     }
 
     func postComment(groupId: Int, recordId: Int, content: String) async throws {}
+    func deleteComment(groupId: Int, recordId: Int, commentId: Int) async throws {}
 }
 
 private struct FeedRepositoryStub: FeedRepositoryProtocol {

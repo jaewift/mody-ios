@@ -22,6 +22,7 @@ public final class FeedChatReactor: Reactor {
 
     public enum Alert: Equatable {
         case deleteConfirmation(recordId: Int)
+        case commentDeleteConfirmation(commentId: Int, recordId: Int)
         case reportConfirmation(recordId: Int)
         case reportSucceeded
         case failure(NetworkError)
@@ -50,6 +51,8 @@ public final class FeedChatReactor: Reactor {
         /// 슬라이드를 오갈 때 바로 보여줄 수 있도록 기록별 댓글을 보관합니다.
         var commentsByRecordId: [Int: [FeedComment]] = [:]
         var pendingComments: [PendingComment] = []
+        /// 삭제 요청 중이라 목록에서 먼저 숨긴 댓글입니다.
+        var deletingCommentIds: Set<Int> = []
         var commentText = ""
         var myProfile: UserInfo?
         var isInitialLoading = false
@@ -67,7 +70,7 @@ public final class FeedChatReactor: Reactor {
         /// 서버 댓글 뒤에 전송 중인 내 댓글을 이어 붙인 목록입니다.
         var displayedComments: [FeedComment] {
             guard let recordId = currentRecord?.recordId else { return [] }
-            return comments + pendingComments
+            return comments.filter { !deletingCommentIds.contains($0.commentId) } + pendingComments
                 .filter { $0.recordId == recordId }
                 .map(\.comment)
         }
@@ -94,6 +97,7 @@ public final class FeedChatReactor: Reactor {
         case didChangeCommentText(String)
         case didTapEmoji(String)
         case didTapSendComment
+        case didTapDeleteComment(commentId: Int)
         case didTapRecordMenu(FeedRecordMenu)
         case didConfirmAlert
         case didDismissAlert
@@ -109,6 +113,8 @@ public final class FeedChatReactor: Reactor {
         case appendPendingComment(PendingComment)
         case confirmPendingComment(commentId: Int)
         case removePendingComment(commentId: Int)
+        case setCommentDeleting(commentId: Int, isDeleting: Bool)
+        case removeComment(commentId: Int, recordId: Int)
         case setRecordMenuLoading(Bool)
         case setAlert(Alert?)
     }
@@ -169,6 +175,13 @@ public final class FeedChatReactor: Reactor {
                     restoresTextOnFailure: true
                 )
             ])
+        case let .didTapDeleteComment(commentId):
+            // 서버에 저장되기 전인 임시 댓글(음수 id)은 지울 수 없습니다.
+            guard commentId > 0,
+                  let recordId = currentState.currentRecord?.recordId else {
+                return .empty()
+            }
+            return .just(.setAlert(.commentDeleteConfirmation(commentId: commentId, recordId: recordId)))
         case let .didTapRecordMenu(menu):
             guard let recordId = currentState.currentRecord?.recordId else { return .empty() }
             switch menu {
@@ -184,6 +197,8 @@ public final class FeedChatReactor: Reactor {
             switch alert {
             case let .deleteConfirmation(recordId):
                 return .concat([dismissAlert, deleteRecord(recordId: recordId)])
+            case let .commentDeleteConfirmation(commentId, recordId):
+                return .concat([dismissAlert, deleteComment(commentId: commentId, recordId: recordId)])
             case let .reportConfirmation(recordId):
                 return .concat([dismissAlert, reportRecord(recordId: recordId)])
             case .reportSucceeded, .failure, .none:
@@ -225,6 +240,15 @@ public final class FeedChatReactor: Reactor {
             }
         case let .removePendingComment(commentId):
             newState.pendingComments.removeAll { $0.comment.commentId == commentId }
+        case let .setCommentDeleting(commentId, isDeleting):
+            if isDeleting {
+                newState.deletingCommentIds.insert(commentId)
+            } else {
+                newState.deletingCommentIds.remove(commentId)
+            }
+        case let .removeComment(commentId, recordId):
+            newState.commentsByRecordId[recordId]?.removeAll { $0.commentId == commentId }
+            newState.deletingCommentIds.remove(commentId)
         case let .setRecordMenuLoading(isLoading):
             newState.isRecordMenuLoading = isLoading
         case let .setAlert(alert):
@@ -364,6 +388,35 @@ private extension FeedChatReactor {
                 isMine: true
             )
         )
+    }
+
+    /// 댓글을 먼저 목록에서 숨기고, 삭제에 실패하면 다시 보여줍니다.
+    func deleteComment(commentId: Int, recordId: Int) -> Observable<Mutation> {
+        let groupId = currentState.groupId
+
+        let delete = asyncObservable { [weak self] () -> Observable<Mutation>? in
+            guard let self else { return nil }
+
+            do {
+                try await self.chatUseCase.deleteComment(
+                    groupId: groupId,
+                    recordId: recordId,
+                    commentId: commentId
+                )
+                return .just(.removeComment(commentId: commentId, recordId: recordId))
+            } catch {
+                return .from([
+                    .setCommentDeleting(commentId: commentId, isDeleting: false),
+                    .setAlert(.failure(error as? NetworkError ?? .unknown))
+                ])
+            }
+        }
+        .flatMap { $0 }
+
+        return .concat([
+            .just(.setCommentDeleting(commentId: commentId, isDeleting: true)),
+            delete
+        ])
     }
 
     func deleteRecord(recordId: Int) -> Observable<Mutation> {

@@ -12,6 +12,8 @@ import UIKit
 final class FeedChatView: UIView {
     let headerView = FeedChatHeaderView()
     let menuView = FeedRecordMenuView()
+    /// 내 댓글을 길게 눌렀을 때 말풍선 옆에 띄우는 메뉴입니다.
+    let commentMenuView = FeedRecordMenuView()
     let carouselView = FeedChatRecordCarouselView()
     let commentTableView = UITableView(frame: .zero, style: .plain)
     /// 댓글이 없을 때 안내 화면을 올려두는 자리입니다.
@@ -33,6 +35,24 @@ final class FeedChatView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// 말풍선 아래에 메뉴를 띄우고, 입력 영역에 가려지면 말풍선 위에 띄웁니다.
+    func showCommentMenu(at bubbleView: UIView) {
+        let bubbleFrame = bubbleView.convert(bubbleView.bounds, to: self)
+        let menuSize = commentMenuView.intrinsicContentSize
+        let spacing: CGFloat = 4
+        let fitsBelow = bubbleFrame.maxY + spacing + menuSize.height <= bottomContainerView.frame.minY
+        let top = fitsBelow
+            ? bubbleFrame.maxY + spacing
+            : bubbleFrame.minY - spacing - menuSize.height
+
+        commentMenuView.snp.remakeConstraints {
+            $0.top.equalToSuperview().offset(top)
+            $0.trailing.equalToSuperview().offset(bubbleFrame.maxX - bounds.width)
+            $0.size.equalTo(menuSize)
+        }
+        commentMenuView.isHidden = false
     }
 
     override func layoutSubviews() {
@@ -108,6 +128,8 @@ private extension FeedChatView {
         backgroundColor = .systemWhite
 
         menuView.isHidden = true
+        commentMenuView.isHidden = true
+        commentMenuView.configure(menus: [.delete])
         commentEmptyContainerView.isHidden = true
 
         commentTableView.backgroundColor = .systemWhite
@@ -145,6 +167,7 @@ private extension FeedChatView {
         addSubview(headerView)
         addSubview(carouselView)
         addSubview(bottomContainerView)
+        addSubview(commentMenuView)
         addSubview(menuView)
         bottomContainerView.addSubview(bottomStackView)
 

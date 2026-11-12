@@ -66,6 +66,15 @@ private extension FeedChatViewController {
                 dismissOnBackgroundTap: false,
                 onDismiss: dismiss
             )
+        case .commentDeleteConfirmation:
+            return MAlertView(
+                title: "댓글을 삭제하시겠어요?",
+                contents: "한 번 삭제한 댓글은 복구할 수 없어요.",
+                leadingButton: MAlertButton("취소", style: .gray, action: dismiss),
+                trailingButton: MAlertButton("삭제", action: confirm),
+                dismissOnBackgroundTap: false,
+                onDismiss: dismiss
+            )
         case .reportConfirmation:
             return MAlertView(
                 title: "게시물을 신고하시겠어요?",

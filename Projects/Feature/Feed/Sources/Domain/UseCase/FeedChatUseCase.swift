@@ -75,4 +75,16 @@ public struct FeedChatUseCase {
             content: content
         )
     }
+
+    public func deleteComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws {
+        try await chatRepository.deleteComment(
+            groupId: groupId,
+            recordId: recordId,
+            commentId: commentId
+        )
+    }
 }

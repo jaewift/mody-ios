@@ -13,6 +13,9 @@ import UIKit
 final class FeedChatCommentCell: UITableViewCell {
     static let reuseIdentifier = "FeedChatCommentCell"
 
+    /// 내 댓글 말풍선을 길게 눌렀을 때 말풍선 뷰를 전달합니다.
+    var onLongPress: ((UIView) -> Void)?
+
     private let profileImageView = FeedRecordCardImageView()
     private let nicknameLabel = MUILabel(style: .c4, color: .gray7, alignment: .left)
     private let bubbleView = FeedChatBubbleView()
@@ -25,6 +28,10 @@ final class FeedChatCommentCell: UITableViewCell {
     )
     private let timeLabel = MUILabel(style: .c4, color: .gray5, alignment: .left)
     private var isMineLayout: Bool?
+    private lazy var longPressGestureRecognizer = UILongPressGestureRecognizer(
+        target: self,
+        action: #selector(didLongPressBubble)
+    )
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -40,6 +47,7 @@ final class FeedChatCommentCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         profileImageView.prepareForReuse()
+        onLongPress = nil
     }
 
     func configure(
@@ -63,6 +71,8 @@ final class FeedChatCommentCell: UITableViewCell {
         contentLabel.text = viewState.content
         timeLabel.text = viewState.createdTime
         updateLayout(isMine: viewState.isMine)
+        // 서버에 저장된 내 댓글만 길게 눌러 삭제할 수 있습니다.
+        longPressGestureRecognizer.isEnabled = viewState.isMine && !viewState.isPending
     }
 }
 
@@ -73,6 +83,8 @@ private extension FeedChatCommentCell {
 
         timeLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         timeLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        bubbleView.addGestureRecognizer(longPressGestureRecognizer)
     }
 
     func setupLayout() {
@@ -100,6 +112,11 @@ private extension FeedChatCommentCell {
         }
 
         updateLayout(isMine: false)
+    }
+
+    @objc func didLongPressBubble(_ gestureRecognizer: UILongPressGestureRecognizer) {
+        guard gestureRecognizer.state == .began else { return }
+        onLongPress?(bubbleView)
     }
 
     /// 내 댓글은 프로필 없이 오른쪽에, 다른 사람 댓글은 프로필 아래 왼쪽에 배치합니다.

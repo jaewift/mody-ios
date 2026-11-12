@@ -38,4 +38,15 @@ enum FeedChatEndpoint {
             bodyParameters: body
         )
     }
+
+    static func deleteComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) -> CoreNetworkEndpoint {
+        CoreNetworkEndpoint(
+            path: "api/v1/groups/\(groupId)/records/\(recordId)/comments/\(commentId)",
+            method: .DELETE
+        )
+    }
 }

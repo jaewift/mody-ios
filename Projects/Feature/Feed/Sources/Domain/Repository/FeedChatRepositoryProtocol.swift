@@ -18,4 +18,10 @@ public protocol FeedChatRepositoryProtocol {
         recordId: Int,
         content: String
     ) async throws
+
+    func deleteComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws
 }
