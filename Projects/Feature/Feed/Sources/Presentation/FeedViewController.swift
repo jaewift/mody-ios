@@ -386,7 +386,7 @@ private extension FeedViewController {
         
         floatingActionButton.snp.makeConstraints {
             $0.trailing.equalToSuperview().offset(-24)
-            $0.bottom.equalToSuperview().offset(-12)
+            $0.bottom.equalTo(view.safeAreaLayoutGuide).offset(-12)
             $0.size.equalTo(56)
         }
     }
@@ -412,7 +412,8 @@ private extension FeedViewController {
 
         feedEmptyView.snp.makeConstraints {
             $0.top.equalTo(weekCalendarView.snp.bottom)
-            $0.leading.trailing.bottom.equalToSuperview()
+            $0.leading.trailing.equalToSuperview()
+            $0.bottom.equalTo(view.safeAreaLayoutGuide)
         }
     }
 }

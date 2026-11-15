@@ -36,4 +36,15 @@ extension MainTab {
             .icProfile
         }
     }
+
+    var selectedImage: UIImage? {
+        switch self {
+        case .feed:
+            .icFeedFill
+        case .challenge:
+            .icAwardFill
+        case .myPage:
+            .icProfileFill
+        }
+    }
 }

@@ -46,5 +46,7 @@ private extension ChallengeView {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
+        // 탭바 뒤(하단 safe area)까지 배경을 채운다
+        .background(Color.gray00.ignoresSafeArea())
     }
 }

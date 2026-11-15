@@ -23,10 +23,8 @@ final class MainContainerViewController: UIViewController, View {
 
     private let navigationBar = MainNavigationBar()
     private let contentContainerView = UIView()
-    private let customTabBarView: CustomTabBarView
     private let mainTabBarController: MainTabBarController
     private let tabs: [MainTab]
-    private var customTabBarHeightConstraint: Constraint?
 
     init(
         tabBarController: MainTabBarController,
@@ -34,7 +32,6 @@ final class MainContainerViewController: UIViewController, View {
         reactor: MainReactor
     ) {
         self.mainTabBarController = tabBarController
-        self.customTabBarView = CustomTabBarView(tabs: tabs)
         self.tabs = tabs
         defer { self.reactor = reactor }
         super.init(nibName: nil, bundle: nil)
@@ -63,12 +60,6 @@ final class MainContainerViewController: UIViewController, View {
         reactor?.action.onNext(.viewWillAppear)
     }
 
-    override func viewSafeAreaInsetsDidChange() {
-        super.viewSafeAreaInsetsDidChange()
-
-        customTabBarHeightConstraint?.update(offset: MainTabBarConstants.height + view.safeAreaInsets.bottom)
-    }
-
     func bind(reactor: MainReactor) {
         reactor.state
             .observe(on: MainScheduler.instance)
@@ -84,7 +75,6 @@ final class MainContainerViewController: UIViewController, View {
         guard let index = tabs.firstIndex(of: tab) else { return }
 
         mainTabBarController.selectTab(index)
-        customTabBarView.updateSelection(index: index)
     }
 }
 
@@ -96,24 +86,16 @@ private extension MainContainerViewController {
     func setupLayout() {
         view.addSubview(navigationBar)
         view.addSubview(contentContainerView)
-        view.addSubview(customTabBarView)
 
         navigationBar.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide)
             $0.leading.trailing.equalToSuperview()
         }
 
+        // 시스템 탭바는 MainTabBarController 내부에 있으므로 콘텐츠를 화면 하단까지 채운다.
         contentContainerView.snp.makeConstraints {
             $0.top.equalTo(navigationBar.snp.bottom)
-            $0.leading.trailing.equalToSuperview()
-            $0.bottom.equalTo(customTabBarView.snp.top)
-        }
-
-        customTabBarView.snp.makeConstraints {
             $0.leading.trailing.bottom.equalToSuperview()
-            customTabBarHeightConstraint = $0.height
-                .equalTo(MainTabBarConstants.height + view.safeAreaInsets.bottom)
-                .constraint
         }
     }
 
@@ -133,7 +115,7 @@ private extension MainContainerViewController {
             self?.onAlarmTap?()
         }
 
-        customTabBarView.onSelect = { [weak self] index in
+        mainTabBarController.onSelectTab = { [weak self] index in
             guard let self, tabs.indices.contains(index) else { return }
 
             selectTab(tabs[index])
