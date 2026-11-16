@@ -28,7 +28,8 @@ actor FeedDemoChatMockRepository: FeedChatRepositoryProtocol {
     func postComment(
         groupId: Int,
         recordId: Int,
-        content: String
+        content: String,
+        emoji: FeedCommentEmoji?
     ) async throws {
         let comment = FeedComment(
             commentId: 1_000 + nextCommentId,
@@ -36,7 +37,8 @@ actor FeedDemoChatMockRepository: FeedChatRepositoryProtocol {
             profileImageUrl: nil,
             content: content,
             createdTime: Self.currentTimeText(),
-            isMine: true
+            isMine: true,
+            emoji: emoji
         )
         nextCommentId += 1
         commentsByRecordId[recordId, default: Self.defaultComments].append(comment)

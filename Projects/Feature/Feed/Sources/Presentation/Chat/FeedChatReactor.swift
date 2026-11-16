@@ -95,7 +95,7 @@ public final class FeedChatReactor: Reactor {
         case didTapBackButton
         case didChangePage(Int)
         case didChangeCommentText(String)
-        case didTapEmoji(String)
+        case didTapEmoji(FeedCommentEmoji)
         case didTapSendComment
         case didTapDeleteComment(commentId: Int)
         case didTapRecordMenu(FeedRecordMenu)
@@ -161,7 +161,7 @@ public final class FeedChatReactor: Reactor {
         case let .didTapEmoji(emoji):
             // 이모지는 입력 중인 글과 별개로 바로 댓글로 남깁니다.
             guard let recordId = currentState.currentRecord?.recordId else { return .empty() }
-            return sendComment(recordId: recordId, content: emoji, restoresTextOnFailure: false)
+            return sendComment(recordId: recordId, emoji: emoji)
         case .didTapSendComment:
             guard currentState.canSendComment,
                   let recordId = currentState.currentRecord?.recordId else {
@@ -330,16 +330,20 @@ private extension FeedChatReactor {
     }
 
     /// 서버 응답을 기다리지 않고 내 댓글을 먼저 보여준 뒤, 저장 결과에 맞춰 목록을 정리합니다.
+    /// 이모지 댓글은 텍스트 없이 `emojiId`만 보냅니다.
     func sendComment(
         recordId: Int,
-        content: String,
-        restoresTextOnFailure: Bool
+        content: String = "",
+        emoji: FeedCommentEmoji? = nil,
+        restoresTextOnFailure: Bool = false
     ) -> Observable<Mutation> {
-        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedContent.isEmpty else { return .empty() }
+        let trimmedContent = emoji == nil
+            ? content.trimmingCharacters(in: .whitespacesAndNewlines)
+            : ""
+        guard emoji != nil || !trimmedContent.isEmpty else { return .empty() }
 
         let groupId = currentState.groupId
-        let pendingComment = makePendingComment(recordId: recordId, content: trimmedContent)
+        let pendingComment = makePendingComment(recordId: recordId, content: trimmedContent, emoji: emoji)
         let pendingCommentId = pendingComment.comment.commentId
 
         let send = asyncObservable { [weak self] () -> Observable<Mutation>? in
@@ -349,7 +353,8 @@ private extension FeedChatReactor {
                 try await self.chatUseCase.sendComment(
                     groupId: groupId,
                     recordId: recordId,
-                    content: trimmedContent
+                    content: trimmedContent,
+                    emoji: emoji
                 )
                 return .concat([
                     .just(.confirmPendingComment(commentId: pendingCommentId)),
@@ -372,7 +377,7 @@ private extension FeedChatReactor {
         ])
     }
 
-    func makePendingComment(recordId: Int, content: String) -> PendingComment {
+    func makePendingComment(recordId: Int, content: String, emoji: FeedCommentEmoji?) -> PendingComment {
         let profile = currentState.myProfile
         // 서버 commentId와 겹치지 않도록 음수 임시 id를 사용합니다.
         let temporaryId = -Int(Date().timeIntervalSince1970 * 1_000) - currentState.pendingComments.count
@@ -385,7 +390,8 @@ private extension FeedChatReactor {
                 profileImageUrl: profile?.profileImageUrl,
                 content: content,
                 createdTime: Date().toString(format: .custom("HH:mm")),
-                isMine: true
+                isMine: true,
+                emoji: emoji
             )
         )
     }

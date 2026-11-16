@@ -26,7 +26,9 @@ final class FeedChatCommentCell: UITableViewCell {
         alignment: .left,
         lineBreakMode: .byCharWrapping
     )
+    private let emojiImageView = UIImageView()
     private let timeLabel = MUILabel(style: .c4, color: .gray5, alignment: .left)
+    private var isEmojiLayout: Bool?
     private var isMineLayout: Bool?
     private lazy var longPressGestureRecognizer = UILongPressGestureRecognizer(
         target: self,
@@ -69,6 +71,8 @@ final class FeedChatCommentCell: UITableViewCell {
         )
         nicknameLabel.text = viewState.nickname
         contentLabel.text = viewState.content
+        emojiImageView.image = viewState.emoji?.image
+        updateContentLayout(isEmoji: viewState.emoji != nil)
         timeLabel.text = viewState.createdTime
         updateLayout(isMine: viewState.isMine)
         // 서버에 저장된 내 댓글만 길게 눌러 삭제할 수 있습니다.
@@ -77,6 +81,10 @@ final class FeedChatCommentCell: UITableViewCell {
 }
 
 private extension FeedChatCommentCell {
+    enum Metric {
+        static let emojiSize: CGFloat = 40
+    }
+
     func setupUI() {
         backgroundColor = .systemWhite
         selectionStyle = .none
@@ -92,6 +100,7 @@ private extension FeedChatCommentCell {
         contentView.addSubview(nicknameLabel)
         contentView.addSubview(bubbleView)
         bubbleView.addSubview(contentLabel)
+        bubbleView.addSubview(emojiImageView)
         contentView.addSubview(timeLabel)
 
         profileImageView.snp.makeConstraints {
@@ -106,12 +115,34 @@ private extension FeedChatCommentCell {
             $0.centerY.equalTo(profileImageView)
         }
 
-        contentLabel.snp.makeConstraints {
-            $0.top.bottom.equalToSuperview().inset(10)
-            $0.leading.trailing.equalToSuperview().inset(14)
-        }
+        emojiImageView.contentMode = .scaleAspectFit
 
         updateLayout(isMine: false)
+        updateContentLayout(isEmoji: false)
+    }
+
+    /// 이모지 댓글은 말풍선 배경 없이 이모지 이미지만 크게 보여줍니다.
+    func updateContentLayout(isEmoji: Bool) {
+        guard isEmojiLayout != isEmoji else { return }
+        isEmojiLayout = isEmoji
+
+        bubbleView.showsBackground = !isEmoji
+        contentLabel.isHidden = isEmoji
+        emojiImageView.isHidden = !isEmoji
+
+        if isEmoji {
+            contentLabel.snp.removeConstraints()
+            emojiImageView.snp.remakeConstraints {
+                $0.edges.equalToSuperview()
+                $0.size.equalTo(Metric.emojiSize)
+            }
+        } else {
+            emojiImageView.snp.removeConstraints()
+            contentLabel.snp.remakeConstraints {
+                $0.top.bottom.equalToSuperview().inset(10)
+                $0.leading.trailing.equalToSuperview().inset(14)
+            }
+        }
     }
 
     @objc func didLongPressBubble(_ gestureRecognizer: UILongPressGestureRecognizer) {

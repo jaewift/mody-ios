@@ -29,6 +29,8 @@ public struct FeedComment: Equatable {
     /// `HH:mm`
     public let createdTime: String
     public let isMine: Bool
+    /// 이모지 댓글이면 값이 있고, 이때 `content`는 비어 있습니다.
+    public let emoji: FeedCommentEmoji?
 
     public init(
         commentId: Int,
@@ -36,7 +38,8 @@ public struct FeedComment: Equatable {
         profileImageUrl: String?,
         content: String,
         createdTime: String,
-        isMine: Bool = false
+        isMine: Bool = false,
+        emoji: FeedCommentEmoji? = nil
     ) {
         self.commentId = commentId
         self.nickname = nickname
@@ -44,5 +47,6 @@ public struct FeedComment: Equatable {
         self.content = content
         self.createdTime = createdTime
         self.isMine = isMine
+        self.emoji = emoji
     }
 }

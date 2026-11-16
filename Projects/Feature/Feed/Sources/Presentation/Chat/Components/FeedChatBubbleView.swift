@@ -26,6 +26,14 @@ final class FeedChatBubbleView: UIView {
         }
     }
 
+    /// 이모지 댓글처럼 말풍선 배경 없이 내용만 보여줄 때 `false`로 둡니다.
+    var showsBackground = true {
+        didSet {
+            guard showsBackground != oldValue else { return }
+            updateFillColor()
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         layer.insertSublayer(backgroundLayer, at: 0)
@@ -55,6 +63,10 @@ final class FeedChatBubbleView: UIView {
 
 private extension FeedChatBubbleView {
     func updateFillColor() {
+        guard showsBackground else {
+            backgroundLayer.fillColor = UIColor.clear.cgColor
+            return
+        }
         backgroundLayer.fillColor = (isMine ? UIColor.main3 : UIColor.gray1).cgColor
     }
 

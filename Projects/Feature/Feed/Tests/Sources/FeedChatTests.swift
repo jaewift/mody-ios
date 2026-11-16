@@ -39,6 +39,35 @@ final class FeedChatTests: XCTestCase {
         XCTAssertEqual(page.comments.first?.isMine, true)
     }
 
+    func testCommentResponseMapsEmojiIdAndIgnoresUnknownId() throws {
+        let data = Data("""
+        {
+          "comments": [
+            { "commentId": 1, "content": "", "emojiId": "fire" },
+            { "commentId": 2, "content": "파이팅", "emojiId": null },
+            { "commentId": 3, "content": "", "emojiId": "unknown" }
+          ]
+        }
+        """.utf8)
+
+        let page = try JSONDecoder().decode(FeedCommentListResponse.self, from: data).toDomain()
+
+        XCTAssertEqual(page.comments.map(\.emoji), [.fire, nil, nil])
+    }
+
+    func testCommentCreateBodyOmitsEmojiIdForTextComment() throws {
+        let textBody = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(FeedCommentCreateBody(content: "화이팅!", emojiId: nil))
+        ) as? [String: Any]
+        let emojiBody = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(FeedCommentCreateBody(content: "", emojiId: "clap"))
+        ) as? [String: Any]
+
+        XCTAssertEqual(textBody?.keys.sorted(), ["content"])
+        XCTAssertEqual(emojiBody?["content"] as? String, "")
+        XCTAssertEqual(emojiBody?["emojiId"] as? String, "clap")
+    }
+
     func testInitialPageIndexFindsRequestedRecord() {
         XCTAssertEqual(FeedChatReactor.initialPageIndex(of: 3, in: makeRecords(ids: [1, 2, 3])), 2)
     }
@@ -299,7 +328,7 @@ private struct FeedChatRepositoryMock: FeedChatRepositoryProtocol {
         FeedCommentPage(comments: [], nextCursor: nil, hasNext: false)
     }
 
-    func postComment(groupId: Int, recordId: Int, content: String) async throws {}
+    func postComment(groupId: Int, recordId: Int, content: String, emoji: FeedCommentEmoji?) async throws {}
     func deleteComment(groupId: Int, recordId: Int, commentId: Int) async throws {}
 }
 

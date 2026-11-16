@@ -64,15 +64,18 @@ public struct FeedChatUseCase {
         )
     }
 
+    /// 텍스트 댓글 또는 이모지 댓글을 보냅니다. 이모지 댓글은 `content`가 비어 있습니다.
     public func sendComment(
         groupId: Int,
         recordId: Int,
-        content: String
+        content: String,
+        emoji: FeedCommentEmoji?
     ) async throws {
         try await chatRepository.postComment(
             groupId: groupId,
             recordId: recordId,
-            content: content
+            content: content,
+            emoji: emoji
         )
     }
 

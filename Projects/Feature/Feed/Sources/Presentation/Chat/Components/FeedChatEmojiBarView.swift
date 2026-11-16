@@ -9,11 +9,9 @@ import DesignSystem
 import SnapKit
 import UIKit
 
-/// iOS 기본 이모지로 구성된 빠른 응원 버튼 목록입니다.
+/// 누르면 바로 이모지 댓글을 보내는 응원 버튼 목록입니다.
 final class FeedChatEmojiBarView: UIView, KeyboardDismissExcluding {
-    private static let emojis = ["👏🏻", "🏅", "🔥", "💛", "🏃"]
-
-    var onSelect: ((String) -> Void)?
+    var onSelect: ((FeedCommentEmoji) -> Void)?
 
     private let stackView = UIStackView()
 
@@ -35,7 +33,7 @@ private extension FeedChatEmojiBarView {
         stackView.spacing = 12
         stackView.alignment = .center
 
-        Self.emojis.forEach { emoji in
+        FeedCommentEmoji.allCases.forEach { emoji in
             stackView.addArrangedSubview(makeEmojiButton(emoji))
         }
     }
@@ -51,16 +49,13 @@ private extension FeedChatEmojiBarView {
         }
     }
 
-    func makeEmojiButton(_ emoji: String) -> UIButton {
+    func makeEmojiButton(_ emoji: FeedCommentEmoji) -> UIButton {
         var configuration = UIButton.Configuration.plain()
         configuration.contentInsets = .zero
-        configuration.attributedTitle = AttributedString(
-            emoji,
-            attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 24)])
-        )
+        configuration.image = emoji.image
 
         let button = UIButton(configuration: configuration)
-        button.accessibilityLabel = emoji
+        button.accessibilityLabel = emoji.accessibilityLabel
         button.addAction(
             UIAction { [weak self] _ in
                 self?.onSelect?(emoji)

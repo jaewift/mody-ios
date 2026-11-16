@@ -46,6 +46,7 @@ struct FeedChatCommentViewState: Equatable {
     let content: String
     let createdTime: String
     let isMine: Bool
+    let emoji: FeedCommentEmoji?
     /// 서버 저장 전 임시 댓글(음수 id)입니다.
     let isPending: Bool
 
@@ -57,5 +58,6 @@ struct FeedChatCommentViewState: Equatable {
         content = comment.content
         createdTime = comment.createdTime
         isMine = comment.isMine
+        emoji = comment.emoji
     }
 }
