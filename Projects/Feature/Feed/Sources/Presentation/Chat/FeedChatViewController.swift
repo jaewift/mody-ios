@@ -225,23 +225,71 @@ private extension FeedChatViewController {
     }
 
     func updateComments(_ newComments: [FeedChatCommentViewState]) {
-        let previousCount = comments.count
+        let oldComments = comments
         comments = newComments
-        chatView.commentTableView.reloadData()
+        applyCommentChanges(from: oldComments, to: newComments)
         // 목록이 바뀌면 메뉴가 가리키던 말풍선 위치도 달라지므로 닫습니다.
         hideCommentMenu()
 
         // 방금 보낸 내 댓글이 추가된 경우에만 마지막 댓글이 보이도록 이동합니다.
-        guard newComments.count > previousCount,
+        guard newComments.count > oldComments.count,
               newComments.last?.isPending == true else {
             return
         }
 
-        chatView.commentTableView.scrollToRow(
-            at: IndexPath(row: newComments.count - 1, section: 0),
-            at: .bottom,
-            animated: true
-        )
+        // 전송과 함께 키보드가 내려가면 목록 높이가 바뀌므로, 레이아웃이 끝난 뒤의 높이로 이동합니다.
+        let lastIndexPath = IndexPath(row: newComments.count - 1, section: 0)
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.comments.count > lastIndexPath.row else { return }
+            self.chatView.commentTableView.scrollToRow(at: lastIndexPath, at: .bottom, animated: true)
+        }
+    }
+
+    /// 목록 전체를 다시 그리면 그리지 않은 댓글의 높이를 다시 추정하면서 스크롤 위치가 튀므로,
+    /// 같은 피드의 댓글이 바뀐 경우에는 바뀐 행만 추가·삭제·갱신합니다.
+    func applyCommentChanges(
+        from oldComments: [FeedChatCommentViewState],
+        to newComments: [FeedChatCommentViewState]
+    ) {
+        let tableView = chatView.commentTableView
+        let oldIds = oldComments.map(\.commentId)
+        let newIds = newComments.map(\.commentId)
+
+        // 처음 불러오거나 다른 피드로 넘어간 경우에는 목록을 새로 그립니다.
+        guard !oldIds.isEmpty, !Set(oldIds).isDisjoint(with: newIds) else {
+            tableView.reloadData()
+            return
+        }
+
+        var deletedIndexPaths: [IndexPath] = []
+        var insertedIndexPaths: [IndexPath] = []
+        for change in newIds.difference(from: oldIds) {
+            switch change {
+            case let .remove(offset, _, _):
+                deletedIndexPaths.append(IndexPath(row: offset, section: 0))
+            case let .insert(offset, _, _):
+                insertedIndexPaths.append(IndexPath(row: offset, section: 0))
+            }
+        }
+
+        let oldCommentsById = Dictionary(oldComments.map { ($0.commentId, $0) }, uniquingKeysWith: { $1 })
+        let changedIndexPaths = newComments.indices.compactMap { index -> IndexPath? in
+            guard let oldComment = oldCommentsById[newComments[index].commentId],
+                  oldComment != newComments[index] else {
+                return nil
+            }
+            return IndexPath(row: index, section: 0)
+        }
+
+        UIView.performWithoutAnimation {
+            tableView.performBatchUpdates {
+                tableView.deleteRows(at: deletedIndexPaths, with: .none)
+                tableView.insertRows(at: insertedIndexPaths, with: .none)
+            }
+            if !changedIndexPaths.isEmpty {
+                tableView.reconfigureRows(at: changedIndexPaths)
+            }
+        }
     }
 
     func showCommentMenu(commentId: Int, at bubbleView: UIView) {
