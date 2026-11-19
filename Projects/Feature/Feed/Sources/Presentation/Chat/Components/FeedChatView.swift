@@ -24,6 +24,9 @@ final class FeedChatView: UIView {
     private let bottomContainerView = UIView()
     private let bottomStackView = UIStackView()
     private var observations: [NSKeyValueObservation] = []
+    private var lastCommentTableHeight: CGFloat?
+    /// 목록 높이가 바뀌기 직전의 스크롤 위치입니다. 높이가 늘어날 때 iOS가 위치를 먼저 조정하므로 따로 기억합니다.
+    private var lastCommentTableOffsetY: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -70,6 +73,7 @@ final class FeedChatView: UIView {
             width: bottomContainerView.bounds.width,
             height: Metric.shadowBandHeight
         )).cgPath
+        followCommentTableHeightChange()
         updateScrollEdgeShadows()
     }
 }
@@ -80,9 +84,34 @@ private extension FeedChatView {
         static let shadowOpacity: Float = 0.08
     }
 
+    /// 키보드가 올라와 댓글 목록이 줄어든 만큼 목록을 위로 밀어, 보던 댓글이 키보드와 함께 올라가게 합니다.
+    /// 키보드 애니메이션 중에 호출되므로 스크롤 위치도 같은 애니메이션으로 움직입니다.
+    func followCommentTableHeightChange() {
+        let tableView = commentTableView
+        let height = tableView.bounds.height
+        defer {
+            lastCommentTableHeight = height
+            lastCommentTableOffsetY = tableView.contentOffset.y
+        }
+
+        guard let lastHeight = lastCommentTableHeight, lastHeight != height else { return }
+
+        let minOffsetY = -tableView.adjustedContentInset.top
+        let maxOffsetY = max(
+            minOffsetY,
+            tableView.contentSize.height + tableView.adjustedContentInset.bottom - height
+        )
+        let offsetY = lastCommentTableOffsetY + (lastHeight - height)
+        tableView.contentOffset.y = min(max(offsetY, minOffsetY), maxOffsetY)
+    }
+
     func observeCommentScroll() {
         observations = [
-            commentTableView.observe(\.contentOffset) { [weak self] _, _ in
+            commentTableView.observe(\.contentOffset) { [weak self] tableView, _ in
+                // 높이가 바뀌는 도중 iOS가 조정한 위치는 기준으로 쓰지 않습니다.
+                if let self, tableView.bounds.height == self.lastCommentTableHeight {
+                    self.lastCommentTableOffsetY = tableView.contentOffset.y
+                }
                 self?.updateScrollEdgeShadows()
             },
             commentTableView.observe(\.contentSize) { [weak self] _, _ in

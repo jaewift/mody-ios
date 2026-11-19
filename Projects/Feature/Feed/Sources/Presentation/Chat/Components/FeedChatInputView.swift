@@ -83,6 +83,8 @@ private extension FeedChatInputView {
         sendButton.addAction(
             UIAction { [weak self] _ in
                 self?.onSend?()
+                // 키보드의 보내기 키처럼 전송 후 키보드를 내립니다.
+                self?.textField.resignFirstResponder()
             },
             for: .touchUpInside
         )
