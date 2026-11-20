@@ -29,7 +29,8 @@ public struct FeedComment: Equatable {
     /// `HH:mm`
     public let createdTime: String
     public let isMine: Bool
-    /// 이모지 댓글이면 값이 있고, 이때 `content`는 비어 있습니다.
+    /// 이모지 하나만 있는 댓글이면 값이 있고, 이때 `content`는 비어 있습니다.
+    /// 글과 함께 쓴 이모지는 `content` 안에 `:mody-id:` 토큰으로 들어 있습니다.
     public let emoji: FeedCommentEmoji?
 
     public init(

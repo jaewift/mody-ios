@@ -39,33 +39,63 @@ final class FeedChatTests: XCTestCase {
         XCTAssertEqual(page.comments.first?.isMine, true)
     }
 
-    func testCommentResponseMapsEmojiIdAndIgnoresUnknownId() throws {
+    func testCommentResponseMapsEmojiOnlyAndKeepsInlineTokensInContent() throws {
         let data = Data("""
         {
           "comments": [
-            { "commentId": 1, "content": "", "emojiId": "fire" },
-            { "commentId": 2, "content": "파이팅", "emojiId": null },
-            { "commentId": 3, "content": "", "emojiId": "unknown" }
+            { "commentId": 1, "content": "", "emojiId": "fire", "emojiOnly": true },
+            { "commentId": 2, "content": "오늘도 :mody-fire: 화이팅", "emojiId": null, "emojiOnly": false },
+            { "commentId": 3, "content": "", "emojiId": "unknown", "emojiOnly": true },
+            { "commentId": 4, "content": "", "emojiId": "clap" }
           ]
         }
         """.utf8)
 
-        let page = try JSONDecoder().decode(FeedCommentListResponse.self, from: data).toDomain()
+        let comments = try JSONDecoder().decode(FeedCommentListResponse.self, from: data).toDomain().comments
 
-        XCTAssertEqual(page.comments.map(\.emoji), [.fire, nil, nil])
+        XCTAssertEqual(comments.map(\.emoji), [.fire, nil, nil, .clap])
+        XCTAssertEqual(comments.map(\.content), ["", "오늘도 :mody-fire: 화이팅", ":mody-unknown:", ""])
     }
 
-    func testCommentCreateBodyOmitsEmojiIdForTextComment() throws {
-        let textBody = try JSONSerialization.jsonObject(
-            with: JSONEncoder().encode(FeedCommentCreateBody(content: "화이팅!", emojiId: nil))
-        ) as? [String: Any]
-        let emojiBody = try JSONSerialization.jsonObject(
-            with: JSONEncoder().encode(FeedCommentCreateBody(content: "", emojiId: "clap"))
+    func testParserSplitsKnownTokensAndKeepsUnknownTokensAsText() {
+        XCTAssertEqual(
+            FeedCommentContentParser.segments(from: "오늘도 :mody-fire: 화이팅:mody-clap::mody-x::mody-run:"),
+            [.text("오늘도 "), .emoji(.fire), .text(" 화이팅"), .emoji(.clap), .text(":mody-x:"), .emoji(.run)]
+        )
+        XCTAssertEqual(FeedCommentContentParser.segments(from: "시간 12:30 :mody-"), [.text("시간 12:30 :mody-")])
+        XCTAssertEqual(FeedCommentContentParser.singleEmoji(in: ":mody-heart:"), .heart)
+        XCTAssertNil(FeedCommentContentParser.singleEmoji(in: ":mody-heart: 고마워"))
+    }
+
+    func testFormatterRestoresTokensFromEmojiImages() {
+        let content = "오늘도 :mody-fire: 화이팅:mody-clap::mody-x:"
+        let attributedText = FeedCommentContentFormatter.attributedString(
+            from: FeedCommentContentParser.segments(from: content),
+            attributes: [:]
+        )
+
+        XCTAssertEqual(FeedCommentContentFormatter.content(from: attributedText), content)
+    }
+
+    func testCommentCreateBodySendsContentOnly() throws {
+        let body = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(FeedCommentCreateBody(content: "화이팅 :mody-clap:"))
         ) as? [String: Any]
 
-        XCTAssertEqual(textBody?.keys.sorted(), ["content"])
-        XCTAssertEqual(emojiBody?["content"] as? String, "")
-        XCTAssertEqual(emojiBody?["emojiId"] as? String, "clap")
+        XCTAssertEqual(body?.keys.sorted(), ["content"])
+        XCTAssertEqual(body?["content"] as? String, "화이팅 :mody-clap:")
+    }
+
+    @MainActor
+    func testTappingEmojiWhileTypingAppendsTokenToText() {
+        let reactor = makeReactor()
+        _ = reactor.state
+
+        reactor.action.onNext(.didChangeCommentText("화이팅"))
+        reactor.action.onNext(.didTapEmoji(.fire))
+
+        XCTAssertEqual(reactor.currentState.commentText, "화이팅:mody-fire:")
+        XCTAssertTrue(reactor.currentState.pendingComments.isEmpty)
     }
 
     func testInitialPageIndexFindsRequestedRecord() {
@@ -328,7 +358,7 @@ private struct FeedChatRepositoryMock: FeedChatRepositoryProtocol {
         FeedCommentPage(comments: [], nextCursor: nil, hasNext: false)
     }
 
-    func postComment(groupId: Int, recordId: Int, content: String, emoji: FeedCommentEmoji?) async throws {}
+    func postComment(groupId: Int, recordId: Int, content: String) async throws {}
     func deleteComment(groupId: Int, recordId: Int, commentId: Int) async throws {}
 }
 

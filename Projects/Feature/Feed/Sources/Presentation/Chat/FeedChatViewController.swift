@@ -106,12 +106,10 @@ private extension FeedChatViewController {
             reactor?.action.onNext(.didTapEmoji(emoji))
         }
 
-        chatView.messageInputView.textField.rx.text.orEmpty
-            .skip(1)
-            .distinctUntilChanged()
-            .map { FeedChatReactor.Action.didChangeCommentText($0) }
-            .bind(to: reactor.action)
-            .disposed(by: disposeBag)
+        chatView.messageInputView.onTextChange = { [weak reactor] content in
+            guard reactor?.currentState.commentText != content else { return }
+            reactor?.action.onNext(.didChangeCommentText(content))
+        }
 
         chatView.messageInputView.onSend = { [weak reactor] in
             reactor?.action.onNext(.didTapSendComment)
@@ -180,9 +178,9 @@ private extension FeedChatViewController {
             .map(\.commentText)
             .distinctUntilChanged()
             .bind(with: self) { owner, text in
-                let textField = owner.chatView.messageInputView.textField
-                guard textField.text != text else { return }
-                textField.text = text
+                let messageInputView = owner.chatView.messageInputView
+                guard messageInputView.content != text else { return }
+                messageInputView.setContent(text)
             }
             .disposed(by: disposeBag)
 
