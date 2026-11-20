@@ -9,7 +9,7 @@ import DesignSystem
 import SnapKit
 import UIKit
 
-/// 누르면 바로 이모지 댓글을 보내는 응원 버튼 목록입니다.
+/// 응원 이모지 버튼 목록입니다. 입력 중인 글이 없으면 바로 보내고, 있으면 글 끝에 붙입니다.
 final class FeedChatEmojiBarView: UIView, KeyboardDismissExcluding {
     var onSelect: ((FeedCommentEmoji) -> Void)?
 

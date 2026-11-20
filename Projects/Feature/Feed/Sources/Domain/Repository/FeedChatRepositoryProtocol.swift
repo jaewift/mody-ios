@@ -16,8 +16,7 @@ public protocol FeedChatRepositoryProtocol {
     func postComment(
         groupId: Int,
         recordId: Int,
-        content: String,
-        emoji: FeedCommentEmoji?
+        content: String
     ) async throws
 
     func deleteComment(

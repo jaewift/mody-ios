@@ -21,6 +21,7 @@ struct FeedCommentResponse: Decodable, Equatable {
     let createdAt: String?
     let isMine: Bool?
     let emojiId: String?
+    let emojiOnly: Bool?
 }
 
 extension FeedCommentListResponse {
@@ -41,11 +42,27 @@ private extension FeedCommentResponse {
             commentId: commentId,
             nickname: nickname ?? "",
             profileImageUrl: profileImageUrl,
-            content: content ?? "",
+            content: displayContent,
             createdTime: Self.timeText(from: createdAt),
             isMine: isMine ?? false,
-            emoji: emojiId.flatMap(FeedCommentEmoji.init(rawValue:))
+            emoji: onlyEmoji
         )
+    }
+
+    /// `emojiOnly`가 없던 응답도 `content`가 비어 있고 `emojiId`가 있으면 이모지 단독 댓글로 봅니다.
+    var isEmojiOnly: Bool {
+        emojiOnly ?? ((content ?? "").isEmpty && emojiId != nil)
+    }
+
+    var onlyEmoji: FeedCommentEmoji? {
+        guard isEmojiOnly else { return nil }
+        return emojiId.flatMap(FeedCommentEmoji.init(rawValue:))
+    }
+
+    /// 앱이 모르는 이모지 단독 댓글은 토큰을 글자 그대로 보여줍니다.
+    var displayContent: String {
+        guard isEmojiOnly, onlyEmoji == nil, let emojiId else { return content ?? "" }
+        return ":mody-\(emojiId):"
     }
 
     /// `2026-11-11T13:50:12` 형태의 서버 시각에서 `HH:mm`만 사용합니다.

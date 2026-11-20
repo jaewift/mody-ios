@@ -28,17 +28,16 @@ actor FeedDemoChatMockRepository: FeedChatRepositoryProtocol {
     func postComment(
         groupId: Int,
         recordId: Int,
-        content: String,
-        emoji: FeedCommentEmoji?
+        content: String
     ) async throws {
         let comment = FeedComment(
             commentId: 1_000 + nextCommentId,
             nickname: "나",
             profileImageUrl: nil,
-            content: content,
+            content: FeedCommentContentParser.singleEmoji(in: content) == nil ? content : "",
             createdTime: Self.currentTimeText(),
             isMine: true,
-            emoji: emoji
+            emoji: FeedCommentContentParser.singleEmoji(in: content)
         )
         nextCommentId += 1
         commentsByRecordId[recordId, default: Self.defaultComments].append(comment)

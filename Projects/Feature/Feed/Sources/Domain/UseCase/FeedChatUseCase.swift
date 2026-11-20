@@ -64,18 +64,16 @@ public struct FeedChatUseCase {
         )
     }
 
-    /// 텍스트 댓글 또는 이모지 댓글을 보냅니다. 이모지 댓글은 `content`가 비어 있습니다.
+    /// 댓글을 보냅니다. 이모지는 `content` 안에 `:mody-id:` 토큰으로 들어 있습니다.
     public func sendComment(
         groupId: Int,
         recordId: Int,
-        content: String,
-        emoji: FeedCommentEmoji?
+        content: String
     ) async throws {
         try await chatRepository.postComment(
             groupId: groupId,
             recordId: recordId,
-            content: content,
-            emoji: emoji
+            content: content
         )
     }
 

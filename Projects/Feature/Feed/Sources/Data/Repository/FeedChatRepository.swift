@@ -40,14 +40,13 @@ public struct FeedChatRepository: FeedChatRepositoryProtocol {
     public func postComment(
         groupId: Int,
         recordId: Int,
-        content: String,
-        emoji: FeedCommentEmoji?
+        content: String
     ) async throws {
         let response: CoreNetworkResponse<CoreNetworkEmptyResponse> = try await network.request(
             FeedChatEndpoint.postComment(
                 groupId: groupId,
                 recordId: recordId,
-                body: FeedCommentCreateBody(content: content, emojiId: emoji?.rawValue)
+                body: FeedCommentCreateBody(content: content)
             )
         )
 

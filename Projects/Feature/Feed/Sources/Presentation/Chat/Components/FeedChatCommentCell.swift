@@ -70,7 +70,18 @@ final class FeedChatCommentCell: UITableViewCell {
             imageLoader: imageLoader
         )
         nicknameLabel.text = viewState.nickname
-        contentLabel.text = viewState.content
+        contentLabel.attributedText = FeedCommentContentFormatter.attributedString(
+            from: viewState.contentSegments,
+            attributes: ModyTypography.c2.token.attributes(
+                color: .gray10,
+                alignment: .left,
+                lineBreakMode: .byCharWrapping
+            ),
+            emojiSize: Metric.inlineEmojiSize
+        )
+        contentLabel.accessibilityLabel = FeedCommentContentFormatter.accessibilityText(
+            from: viewState.contentSegments
+        )
         emojiImageView.image = viewState.emoji?.image
         updateContentLayout(isEmoji: viewState.emoji != nil)
         timeLabel.text = viewState.createdTime
@@ -83,6 +94,8 @@ final class FeedChatCommentCell: UITableViewCell {
 private extension FeedChatCommentCell {
     enum Metric {
         static let emojiSize: CGFloat = 40
+        /// 글과 함께 쓴 이모지 크기입니다.
+        static let inlineEmojiSize: CGFloat = 24
     }
 
     func setupUI() {

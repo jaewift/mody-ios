@@ -43,7 +43,8 @@ struct FeedChatCommentViewState: Equatable {
     let commentId: Int
     let nickname: String
     let profileImageUrl: String?
-    let content: String
+    /// 글 사이의 `:mody-id:` 토큰을 이모지로 나눈 내용입니다.
+    let contentSegments: [FeedCommentContentSegment]
     let createdTime: String
     let isMine: Bool
     let emoji: FeedCommentEmoji?
@@ -55,7 +56,7 @@ struct FeedChatCommentViewState: Equatable {
         isPending = comment.commentId < 0
         nickname = comment.nickname
         profileImageUrl = comment.profileImageUrl
-        content = comment.content
+        contentSegments = FeedCommentContentParser.segments(from: comment.content)
         createdTime = comment.createdTime
         isMine = comment.isMine
         emoji = comment.emoji
