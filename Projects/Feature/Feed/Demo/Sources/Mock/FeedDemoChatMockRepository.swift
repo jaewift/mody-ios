@@ -50,6 +50,12 @@ actor FeedDemoChatMockRepository: FeedChatRepositoryProtocol {
     ) async throws {
         commentsByRecordId[recordId, default: Self.defaultComments].removeAll { $0.commentId == commentId }
     }
+
+    func reportComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws {}
 }
 
 private extension FeedDemoChatMockRepository {

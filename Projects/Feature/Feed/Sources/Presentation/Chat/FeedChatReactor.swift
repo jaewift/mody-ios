@@ -23,6 +23,7 @@ public final class FeedChatReactor: Reactor {
     public enum Alert: Equatable {
         case deleteConfirmation(recordId: Int)
         case commentDeleteConfirmation(commentId: Int, recordId: Int)
+        case commentReportConfirmation(commentId: Int, recordId: Int)
         case reportConfirmation(recordId: Int)
         case reportSucceeded
         case failure(NetworkError)
@@ -98,6 +99,7 @@ public final class FeedChatReactor: Reactor {
         case didTapEmoji(FeedCommentEmoji)
         case didTapSendComment
         case didTapDeleteComment(commentId: Int)
+        case didTapReportComment(commentId: Int)
         case didTapRecordMenu(FeedRecordMenu)
         case didConfirmAlert
         case didDismissAlert
@@ -186,6 +188,12 @@ public final class FeedChatReactor: Reactor {
                 return .empty()
             }
             return .just(.setAlert(.commentDeleteConfirmation(commentId: commentId, recordId: recordId)))
+        case let .didTapReportComment(commentId):
+            guard commentId > 0,
+                  let recordId = currentState.currentRecord?.recordId else {
+                return .empty()
+            }
+            return .just(.setAlert(.commentReportConfirmation(commentId: commentId, recordId: recordId)))
         case let .didTapRecordMenu(menu):
             guard let recordId = currentState.currentRecord?.recordId else { return .empty() }
             switch menu {
@@ -203,6 +211,8 @@ public final class FeedChatReactor: Reactor {
                 return .concat([dismissAlert, deleteRecord(recordId: recordId)])
             case let .commentDeleteConfirmation(commentId, recordId):
                 return .concat([dismissAlert, deleteComment(commentId: commentId, recordId: recordId)])
+            case let .commentReportConfirmation(commentId, recordId):
+                return .concat([dismissAlert, reportComment(commentId: commentId, recordId: recordId)])
             case let .reportConfirmation(recordId):
                 return .concat([dismissAlert, reportRecord(recordId: recordId)])
             case .reportSucceeded, .failure, .none:
@@ -456,6 +466,31 @@ private extension FeedChatReactor {
 
             do {
                 try await self.feedUseCase.reportRecord(groupId: groupId, recordId: recordId)
+                return .setAlert(.reportSucceeded)
+            } catch {
+                return .setAlert(.failure(error as? NetworkError ?? .unknown))
+            }
+        }
+
+        return .concat([
+            .just(.setRecordMenuLoading(true)),
+            report,
+            .just(.setRecordMenuLoading(false))
+        ])
+    }
+
+    func reportComment(commentId: Int, recordId: Int) -> Observable<Mutation> {
+        let groupId = currentState.groupId
+
+        let report = asyncObservable { [weak self] () -> Mutation? in
+            guard let self else { return nil }
+
+            do {
+                try await self.chatUseCase.reportComment(
+                    groupId: groupId,
+                    recordId: recordId,
+                    commentId: commentId
+                )
                 return .setAlert(.reportSucceeded)
             } catch {
                 return .setAlert(.failure(error as? NetworkError ?? .unknown))

@@ -84,11 +84,16 @@ private extension FeedChatViewController {
             reactor?.action.onNext(.didTapRecordMenu(menu))
         }
 
-        // 댓글 메뉴에는 삭제만 있습니다.
-        chatView.commentMenuView.onSelect = { [weak self, weak reactor] _ in
+        // 내 댓글은 삭제, 다른 사람 댓글은 신고 메뉴가 뜹니다.
+        chatView.commentMenuView.onSelect = { [weak self, weak reactor] menu in
             guard let self, let commentId = self.selectedCommentId else { return }
             self.hideCommentMenu()
-            reactor?.action.onNext(.didTapDeleteComment(commentId: commentId))
+            switch menu {
+            case .delete:
+                reactor?.action.onNext(.didTapDeleteComment(commentId: commentId))
+            case .report:
+                reactor?.action.onNext(.didTapReportComment(commentId: commentId))
+            }
         }
 
         chatView.commentTableView.rx.willBeginDragging
@@ -290,11 +295,11 @@ private extension FeedChatViewController {
         }
     }
 
-    func showCommentMenu(commentId: Int, at bubbleView: UIView) {
+    func showCommentMenu(for comment: FeedChatCommentViewState, at bubbleView: UIView) {
         chatView.menuView.isHidden = true
-        selectedCommentId = commentId
+        selectedCommentId = comment.commentId
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        chatView.showCommentMenu(at: bubbleView)
+        chatView.showCommentMenu(at: bubbleView, isMine: comment.isMine)
     }
 
     func hideCommentMenu() {
@@ -328,7 +333,7 @@ extension FeedChatViewController: UITableViewDataSource {
         let comment = comments[indexPath.row]
         cell.configure(comment, imageLoader: imageLoader)
         cell.onLongPress = { [weak self] bubbleView in
-            self?.showCommentMenu(commentId: comment.commentId, at: bubbleView)
+            self?.showCommentMenu(for: comment, at: bubbleView)
         }
         return cell
     }

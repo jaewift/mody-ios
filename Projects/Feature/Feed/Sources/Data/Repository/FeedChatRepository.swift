@@ -72,4 +72,22 @@ public struct FeedChatRepository: FeedChatRepositoryProtocol {
             throw NetworkError.invalidResponse
         }
     }
+
+    public func reportComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws {
+        let response: CoreNetworkResponse<CoreNetworkEmptyResponse> = try await network.request(
+            FeedChatEndpoint.reportComment(
+                groupId: groupId,
+                recordId: recordId,
+                commentId: commentId
+            )
+        )
+
+        guard response.isSuccess != false else {
+            throw NetworkError.invalidResponse
+        }
+    }
 }
