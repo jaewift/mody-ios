@@ -88,4 +88,16 @@ public struct FeedChatUseCase {
             commentId: commentId
         )
     }
+
+    public func reportComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws {
+        try await chatRepository.reportComment(
+            groupId: groupId,
+            recordId: recordId,
+            commentId: commentId
+        )
+    }
 }

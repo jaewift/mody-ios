@@ -41,7 +41,9 @@ final class FeedChatView: UIView {
     }
 
     /// 말풍선 아래에 메뉴를 띄우고, 입력 영역에 가려지면 말풍선 위에 띄웁니다.
-    func showCommentMenu(at bubbleView: UIView) {
+    /// 내 댓글은 삭제, 다른 사람 댓글은 신고 메뉴를 말풍선 쪽 끝에 맞춰 보여줍니다.
+    func showCommentMenu(at bubbleView: UIView, isMine: Bool) {
+        commentMenuView.configure(menus: isMine ? [.delete] : [.report])
         let bubbleFrame = bubbleView.convert(bubbleView.bounds, to: self)
         let menuSize = commentMenuView.intrinsicContentSize
         let spacing: CGFloat = 4
@@ -52,7 +54,11 @@ final class FeedChatView: UIView {
 
         commentMenuView.snp.remakeConstraints {
             $0.top.equalToSuperview().offset(top)
-            $0.trailing.equalToSuperview().offset(bubbleFrame.maxX - bounds.width)
+            if isMine {
+                $0.trailing.equalToSuperview().offset(bubbleFrame.maxX - bounds.width)
+            } else {
+                $0.leading.equalToSuperview().offset(bubbleFrame.minX)
+            }
             $0.size.equalTo(menuSize)
         }
         commentMenuView.isHidden = false
@@ -158,7 +164,6 @@ private extension FeedChatView {
 
         menuView.isHidden = true
         commentMenuView.isHidden = true
-        commentMenuView.configure(menus: [.delete])
         commentEmptyContainerView.isHidden = true
 
         commentTableView.backgroundColor = .systemWhite

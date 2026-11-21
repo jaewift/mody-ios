@@ -13,7 +13,7 @@ import UIKit
 final class FeedChatCommentCell: UITableViewCell {
     static let reuseIdentifier = "FeedChatCommentCell"
 
-    /// 내 댓글 말풍선을 길게 눌렀을 때 말풍선 뷰를 전달합니다.
+    /// 말풍선을 길게 눌렀을 때 말풍선 뷰를 전달합니다.
     var onLongPress: ((UIView) -> Void)?
 
     private let profileImageView = FeedRecordCardImageView()
@@ -86,8 +86,8 @@ final class FeedChatCommentCell: UITableViewCell {
         updateContentLayout(isEmoji: viewState.emoji != nil)
         timeLabel.text = viewState.createdTime
         updateLayout(isMine: viewState.isMine)
-        // 서버에 저장된 내 댓글만 길게 눌러 삭제할 수 있습니다.
-        longPressGestureRecognizer.isEnabled = viewState.isMine && !viewState.isPending
+        // 서버에 저장된 댓글만 길게 눌러 삭제(내 댓글)하거나 신고(다른 사람 댓글)할 수 있습니다.
+        longPressGestureRecognizer.isEnabled = !viewState.isPending
     }
 }
 

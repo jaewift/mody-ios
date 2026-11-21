@@ -49,4 +49,15 @@ enum FeedChatEndpoint {
             method: .DELETE
         )
     }
+
+    static func reportComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) -> CoreNetworkEndpoint {
+        CoreNetworkEndpoint(
+            path: "api/v1/groups/\(groupId)/records/\(recordId)/comments/\(commentId)/report",
+            method: .POST
+        )
+    }
 }

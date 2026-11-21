@@ -24,4 +24,10 @@ public protocol FeedChatRepositoryProtocol {
         recordId: Int,
         commentId: Int
     ) async throws
+
+    func reportComment(
+        groupId: Int,
+        recordId: Int,
+        commentId: Int
+    ) async throws
 }

@@ -9,6 +9,7 @@ import Foundation
 import XCTest
 import CommonDomain
 import CoreAuthInterface
+import CoreNetworkInterface
 import FeedInterface
 @testable import Feed
 
@@ -96,6 +97,14 @@ final class FeedChatTests: XCTestCase {
 
         XCTAssertEqual(reactor.currentState.commentText, "화이팅:mody-fire:")
         XCTAssertTrue(reactor.currentState.pendingComments.isEmpty)
+    }
+
+    func testReportCommentEndpointPostsToCommentReportPath() {
+        let endpoint = FeedChatEndpoint.reportComment(groupId: 1, recordId: 2, commentId: 3)
+
+        XCTAssertEqual(endpoint.path, "api/v1/groups/1/records/2/comments/3/report")
+        XCTAssertEqual(endpoint.method, .POST)
+        XCTAssertNil(endpoint.bodyParameters)
     }
 
     func testInitialPageIndexFindsRequestedRecord() {
@@ -360,6 +369,7 @@ private struct FeedChatRepositoryMock: FeedChatRepositoryProtocol {
 
     func postComment(groupId: Int, recordId: Int, content: String) async throws {}
     func deleteComment(groupId: Int, recordId: Int, commentId: Int) async throws {}
+    func reportComment(groupId: Int, recordId: Int, commentId: Int) async throws {}
 }
 
 private struct FeedRepositoryStub: FeedRepositoryProtocol {

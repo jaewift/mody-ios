@@ -75,6 +75,15 @@ private extension FeedChatViewController {
                 dismissOnBackgroundTap: false,
                 onDismiss: dismiss
             )
+        case .commentReportConfirmation:
+            return MAlertView(
+                title: "댓글을 신고하시겠어요?",
+                contents: "신고한 댓글은 검토 후 삭제 처리할 예정입니다.",
+                leadingButton: MAlertButton("취소", style: .gray, action: dismiss),
+                trailingButton: MAlertButton("신고하기", action: confirm),
+                dismissOnBackgroundTap: false,
+                onDismiss: dismiss
+            )
         case .reportConfirmation:
             return MAlertView(
                 title: "게시물을 신고하시겠어요?",
