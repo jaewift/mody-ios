@@ -62,8 +62,8 @@ private extension SplashView {
                     title: "지원이 종료된 버전이에요",
                     contents: "모디를 계속 이용하려면 최신 버전으로 업데이트해 주세요."
                 )
-            case let .notice(noticePopupInfo):
-                NoticePopupView(info: noticePopupInfo) {
+            case let .notice(noticePopupInfo, image):
+                NoticePopupView(info: noticePopupInfo, image: image) {
                     store.send(.noticeConfirmButtonTapped)
                 }
             }

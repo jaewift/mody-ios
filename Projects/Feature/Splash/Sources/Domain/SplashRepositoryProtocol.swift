@@ -13,5 +13,7 @@ public protocol SplashRepositoryProtocol {
     func getRemoteConfigBool(for key: RemoteConfigKeys) -> Bool
     func getRemoteConfigString(for key: RemoteConfigKeys) -> String
     func getNoticePopupInfo() -> NoticePopupInfo?
+    func hasSeenNotice(id: String) -> Bool
+    func markNoticeAsSeen(id: String)
     func getStoredAuthSession() -> AuthSession?
 }

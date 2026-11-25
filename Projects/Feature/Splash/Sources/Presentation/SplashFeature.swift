@@ -10,25 +10,36 @@ import SplashInterface
 import CommonDomain
 import CoreAnalyticsInterface
 import CoreAuthInterface
+import CoreModyImageInterface
 import Foundation
 import Base
+import ModyLogger
+import UIKit
 
 @Reducer
 public struct SplashFeature {
+    /// 스플래시가 일러스트 로딩 때문에 오래 멈추지 않도록 하는 최대 대기 시간입니다.
+    static let noticeImageTimeout: Duration = .seconds(3)
+    static let noticeImageVariantIdentifier = "notice-illustration"
+    static let noticeImageScale: CGFloat = 3
+
     private let splashUseCase: SplashUseCase
     private let authUseCase: AuthUseCaseProtocol
     private let analyticsUseCase: AnalyticsUseCaseProtocol
+    private let imageLoader: RemoteImageLoading
     private let router: @MainActor (SplashRoute) -> Void
-    
+
     public init(
         splashUseCase: SplashUseCase,
         authUseCase: AuthUseCaseProtocol,
         analyticsUseCase: AnalyticsUseCaseProtocol,
+        imageLoader: RemoteImageLoading,
         router: @escaping @MainActor (SplashRoute) -> Void
     ) {
         self.splashUseCase = splashUseCase
         self.authUseCase = authUseCase
         self.analyticsUseCase = analyticsUseCase
+        self.imageLoader = imageLoader
         self.router = router
     }
 
@@ -38,7 +49,7 @@ public struct SplashFeature {
             case error(NetworkError)
             case forceUpdate
             case minimumSupportedVersion
-            case notice(NoticePopupInfo)
+            case notice(NoticePopupInfo, image: UIImage?)
         }
 
         public init() {
@@ -110,14 +121,19 @@ public struct SplashFeature {
                 
                 return .send(.checkNotice)
             case .checkNotice:
-                let noticePopupInfo = splashUseCase.getNoticePopupInfo()
-
-                guard let noticePopupInfo,
-                      !noticePopupInfo.isEmpty else {
+                guard let notice = splashUseCase.getNoticeToShow() else {
                     return .send(.healthCheck)
                 }
 
-                return .send(.showAlert(.notice(noticePopupInfo)))
+                guard let imageURL = notice.validImageURL else {
+                    return .send(.showAlert(.notice(notice, image: nil)))
+                }
+
+                // 팝업이 뜬 뒤 이미지가 늦게 채워지지 않도록 미리 받아 둔 뒤 노출합니다.
+                return .run { send in
+                    let image = await loadNoticeImage(from: imageURL)
+                    await send(.showAlert(.notice(notice, image: image)))
+                }
             case .alertAction:
                 return .none
             case let .showAlert(alertCase):
@@ -125,10 +141,12 @@ public struct SplashFeature {
                 state.alertCase = alertCase
                 return .send(.alertAction(.present))
             case .noticeConfirmButtonTapped:
-                guard case let .notice(noticePopupInfo) = state.alertCase,
-                      noticePopupInfo.skipPossible == true else {
+                guard case let .notice(notice, _) = state.alertCase,
+                      notice.skipPossible == true else {
                     return .none
                 }
+
+                splashUseCase.markNoticeAsSeen(notice)
 
                 return .run { send in
                     await send(.alertAction(.dismiss))
@@ -187,6 +205,34 @@ private extension SplashFeature {
             return .serverHealthChecked(isStable)
         } catch {
             return .showAlert(.error(error as? NetworkError ?? .unknown))
+        }
+    }
+
+    /// 공지 일러스트를 받아옵니다. 실패하거나 제한 시간을 넘기면 이미지 없이 공지를 띄우도록 `nil`을 반환합니다.
+    func loadNoticeImage(from url: URL) async -> UIImage? {
+        let request = RemoteImageRequest(
+            url: url,
+            variantIdentifier: Self.noticeImageVariantIdentifier,
+            maximumPixelSize: Int(NoticePopupView.illustrationSize * Self.noticeImageScale)
+        )
+
+        return await withTaskGroup(of: UIImage?.self) { [imageLoader] group in
+            group.addTask {
+                do {
+                    return try await imageLoader.loadImage(with: request)
+                } catch {
+                    ModyLogger.debug("Notice image load failed: \(error)")
+                    return nil
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(for: Self.noticeImageTimeout)
+                return nil
+            }
+
+            let firstResult = await group.next() ?? nil
+            group.cancelAll()
+            return firstResult
         }
     }
 

@@ -9,20 +9,26 @@ import CommonDomain
 import CoreKeyChainStorageInterface
 import CoreNetworkInterface
 import FirebaseServiceInterface
+import Foundation
 
 public struct SplashRepository: SplashRepositoryProtocol {
+    static let seenNoticeIDsKey = "seenNoticeIDs"
+
     private let network: CoreNetworkProtocol
     private let firebaseService: FirebaseServiceInterface
     private let keyChainStorage: CoreKeyChainStorageInterface
+    private let userDefaults: UserDefaults
 
     public init(
         network: CoreNetworkProtocol,
         firebaseService: FirebaseServiceInterface,
-        keyChainStorage: CoreKeyChainStorageInterface
+        keyChainStorage: CoreKeyChainStorageInterface,
+        userDefaults: UserDefaults = .standard
     ) {
         self.network = network
         self.firebaseService = firebaseService
         self.keyChainStorage = keyChainStorage
+        self.userDefaults = userDefaults
     }
 
     public func getHealthCheck() async throws -> Bool {
@@ -49,6 +55,19 @@ public struct SplashRepository: SplashRepositoryProtocol {
             forKey: RemoteConfigKeys.notice.rawValue,
             as: NoticePopupInfo.self
         )
+    }
+
+    public func hasSeenNotice(id: String) -> Bool {
+        seenNoticeIDs.contains(id)
+    }
+
+    public func markNoticeAsSeen(id: String) {
+        guard !hasSeenNotice(id: id) else { return }
+        userDefaults.set(seenNoticeIDs + [id], forKey: Self.seenNoticeIDsKey)
+    }
+
+    private var seenNoticeIDs: [String] {
+        userDefaults.stringArray(forKey: Self.seenNoticeIDsKey) ?? []
     }
 
     public func getStoredAuthSession() -> AuthSession? {
