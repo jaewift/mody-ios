@@ -53,13 +53,6 @@ public struct NoticePopupInfo: Decodable, Equatable {
 
     /// https 스킴의 유효한 이미지 URL만 반환합니다.
     public var validImageURL: URL? {
-        guard let trimmedURLString = imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-              let url = URL(string: trimmedURLString),
-              url.scheme?.lowercased() == "https",
-              url.host?.isEmpty == false else {
-            return nil
-        }
-
-        return url
+        PopupImageURL.validated(imageURL)
     }
 }

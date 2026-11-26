@@ -19,9 +19,9 @@ import UIKit
 @Reducer
 public struct SplashFeature {
     /// 스플래시가 일러스트 로딩 때문에 오래 멈추지 않도록 하는 최대 대기 시간입니다.
-    static let noticeImageTimeout: Duration = .seconds(3)
-    static let noticeImageVariantIdentifier = "notice-illustration"
-    static let noticeImageScale: CGFloat = 3
+    static let popupImageTimeout: Duration = .seconds(3)
+    static let popupImageVariantIdentifier = "splash-popup-illustration"
+    static let popupImageScale: CGFloat = 3
 
     private let splashUseCase: SplashUseCase
     private let authUseCase: AuthUseCaseProtocol
@@ -47,7 +47,7 @@ public struct SplashFeature {
     public struct State: Equatable {
         public enum AlertCase: Equatable {
             case error(NetworkError)
-            case forceUpdate
+            case forceUpdate(image: UIImage?)
             case minimumSupportedVersion
             case notice(NoticePopupInfo, image: UIImage?)
         }
@@ -102,7 +102,15 @@ public struct SplashFeature {
 
                 if needForceUpdate {
                     state.appStoreURLString = splashUseCase.getRemoteConfigString(for: .appStoreURL)
-                    return .send(.showAlert(.forceUpdate))
+
+                    guard let imageURL = splashUseCase.getUpdatePopupImageURL() else {
+                        return .send(.showAlert(.forceUpdate(image: nil)))
+                    }
+
+                    return .run { send in
+                        let image = await loadPopupImage(from: imageURL)
+                        await send(.showAlert(.forceUpdate(image: image)))
+                    }
                 }
                 
                 return .send(.checkMinimumSupportedVersion)
@@ -131,7 +139,7 @@ public struct SplashFeature {
 
                 // 팝업이 뜬 뒤 이미지가 늦게 채워지지 않도록 미리 받아 둔 뒤 노출합니다.
                 return .run { send in
-                    let image = await loadNoticeImage(from: imageURL)
+                    let image = await loadPopupImage(from: imageURL)
                     await send(.showAlert(.notice(notice, image: image)))
                 }
             case .alertAction:
@@ -208,12 +216,12 @@ private extension SplashFeature {
         }
     }
 
-    /// 공지 일러스트를 받아옵니다. 실패하거나 제한 시간을 넘기면 이미지 없이 공지를 띄우도록 `nil`을 반환합니다.
-    func loadNoticeImage(from url: URL) async -> UIImage? {
+    /// 팝업 일러스트를 받아옵니다. 실패하거나 제한 시간을 넘기면 이미지 없이 팝업을 띄우도록 `nil`을 반환합니다.
+    func loadPopupImage(from url: URL) async -> UIImage? {
         let request = RemoteImageRequest(
             url: url,
-            variantIdentifier: Self.noticeImageVariantIdentifier,
-            maximumPixelSize: Int(NoticePopupView.illustrationSize * Self.noticeImageScale)
+            variantIdentifier: Self.popupImageVariantIdentifier,
+            maximumPixelSize: Int(IllustratedPopupView.illustrationSize * Self.popupImageScale)
         )
 
         return await withTaskGroup(of: UIImage?.self) { [imageLoader] group in
@@ -221,12 +229,12 @@ private extension SplashFeature {
                 do {
                     return try await imageLoader.loadImage(with: request)
                 } catch {
-                    ModyLogger.debug("Notice image load failed: \(error)")
+                    ModyLogger.debug("Popup image load failed: \(error)")
                     return nil
                 }
             }
             group.addTask {
-                try? await Task.sleep(for: Self.noticeImageTimeout)
+                try? await Task.sleep(for: Self.popupImageTimeout)
                 return nil
             }
 

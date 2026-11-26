@@ -52,11 +52,8 @@ private extension SplashView {
                 CommonErrorAlertView(networkError) {
                     store.send(.alertAction(.dismiss))
                 }
-            case .forceUpdate:
-                updateAlertView(
-                    title: "업데이트가 필요해요",
-                    contents: "원활한 모디 서비스 이용을 위해 최신 버전으로 업데이트해 주세요."
-                )
+            case let .forceUpdate(image):
+                forceUpdateAlertView(image: image)
             case .minimumSupportedVersion:
                 updateAlertView(
                     title: "지원이 종료된 버전이에요",
@@ -67,6 +64,26 @@ private extension SplashView {
                     store.send(.noticeConfirmButtonTapped)
                 }
             }
+        }
+    }
+
+    /// 일러스트를 받아오면 공지 팝업과 같은 레이아웃으로, 아니면 기존 텍스트 알럿으로 표시합니다.
+    @ViewBuilder
+    func forceUpdateAlertView(image: UIImage?) -> some View {
+        let title = "업데이트가 필요해요"
+        let contents = "원활한 모디 서비스 이용을 위해 최신 버전으로 업데이트해 주세요."
+
+        if let image {
+            IllustratedPopupView(
+                image: image,
+                title: title,
+                contents: contents,
+                buttonTitle: "업데이트하기"
+            ) {
+                openAppStore(urlString: store.appStoreURLString)
+            }
+        } else {
+            updateAlertView(title: title, contents: contents)
         }
     }
 

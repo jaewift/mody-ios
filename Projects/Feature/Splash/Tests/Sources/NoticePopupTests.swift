@@ -121,6 +121,30 @@ final class NoticePopupTests: XCTestCase {
         XCTAssertTrue(repository.seenNoticeIDs.isEmpty)
     }
 
+    // MARK: - Update popup image
+
+    func testGetUpdatePopupImageURLReturnsValidURL() {
+        let repository = NoticeRepositoryStub(
+            notice: nil,
+            remoteConfigStrings: [.updatePopupImageURL: " https://example.com/update.png "]
+        )
+        let useCase = SplashUseCase(splashRepository: repository)
+
+        XCTAssertEqual(useCase.getUpdatePopupImageURL()?.absoluteString, "https://example.com/update.png")
+    }
+
+    func testGetUpdatePopupImageURLReturnsNilForEmptyOrInvalidValue() {
+        for value in ["", "   ", "http://example.com/update.png", "not a url"] {
+            let repository = NoticeRepositoryStub(
+                notice: nil,
+                remoteConfigStrings: [.updatePopupImageURL: value]
+            )
+            let useCase = SplashUseCase(splashRepository: repository)
+
+            XCTAssertNil(useCase.getUpdatePopupImageURL(), "Expected \(value) to be rejected")
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeOneTimeNotice() -> NoticePopupInfo {
@@ -140,17 +164,23 @@ final class NoticePopupTests: XCTestCase {
 
 private final class NoticeRepositoryStub: SplashRepositoryProtocol {
     private let notice: NoticePopupInfo?
+    private let remoteConfigStrings: [RemoteConfigKeys: String]
     private(set) var seenNoticeIDs: [String]
 
-    init(notice: NoticePopupInfo?, seenNoticeIDs: [String] = []) {
+    init(
+        notice: NoticePopupInfo?,
+        seenNoticeIDs: [String] = [],
+        remoteConfigStrings: [RemoteConfigKeys: String] = [:]
+    ) {
         self.notice = notice
         self.seenNoticeIDs = seenNoticeIDs
+        self.remoteConfigStrings = remoteConfigStrings
     }
 
     func getHealthCheck() async throws -> Bool { true }
     func fetchAndActivate() async {}
     func getRemoteConfigBool(for key: RemoteConfigKeys) -> Bool { false }
-    func getRemoteConfigString(for key: RemoteConfigKeys) -> String { "" }
+    func getRemoteConfigString(for key: RemoteConfigKeys) -> String { remoteConfigStrings[key] ?? "" }
     func getNoticePopupInfo() -> NoticePopupInfo? { notice }
     func hasSeenNotice(id: String) -> Bool { seenNoticeIDs.contains(id) }
     func markNoticeAsSeen(id: String) { seenNoticeIDs = seenNoticeIDs + [id] }
