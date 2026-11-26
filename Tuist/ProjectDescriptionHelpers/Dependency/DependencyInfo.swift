@@ -106,7 +106,8 @@ public let dependencyInfo: DependencyInfo = DependencyInfo(
                 .microFeature(.CoreKeyChainStorage),
                 .module(.CommonDomain),
                 .microFeature(.CoreAuth),
-                .microFeature(.CoreAnalytics)
+                .microFeature(.CoreAnalytics),
+                .microFeature(.CoreModyImage)
             ]
         ),
         .SignIn: .init(

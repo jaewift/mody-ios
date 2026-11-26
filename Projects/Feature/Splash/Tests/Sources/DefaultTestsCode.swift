@@ -77,5 +77,7 @@ private struct SplashRepositoryStub: SplashRepositoryProtocol {
     func getRemoteConfigBool(for key: RemoteConfigKeys) -> Bool { false }
     func getRemoteConfigString(for key: RemoteConfigKeys) -> String { "" }
     func getNoticePopupInfo() -> NoticePopupInfo? { nil }
+    func hasSeenNotice(id: String) -> Bool { false }
+    func markNoticeAsSeen(id: String) {}
     func getStoredAuthSession() -> AuthSession? { nil }
 }

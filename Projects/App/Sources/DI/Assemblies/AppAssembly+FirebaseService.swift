@@ -17,11 +17,12 @@ extension AppAssembly {
             FirebaseService(
                 remoteConfig: RemoteConfig.remoteConfig(),
                 defaultValues: [
-                    RemoteConfigKeys.forceUpdate.rawValue: NSNumber(value: false),
+                    RemoteConfigKeys.recommendUpdate.rawValue: NSNumber(value: false),
                     RemoteConfigKeys.guestLogin.rawValue: NSNumber(value: false),
                     RemoteConfigKeys.notice.rawValue: "{}" as NSString,
                     RemoteConfigKeys.minimumSupportedVersion.rawValue: "1.0.0" as NSString,
-                    RemoteConfigKeys.appStoreURL.rawValue: "" as NSString
+                    RemoteConfigKeys.appStoreURL.rawValue: "" as NSString,
+                    RemoteConfigKeys.updatePopupImageURL.rawValue: "" as NSString
                 ]
             )
         }

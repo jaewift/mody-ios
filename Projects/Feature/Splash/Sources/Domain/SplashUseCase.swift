@@ -31,8 +31,31 @@ public struct SplashUseCase {
         splashRepository.getRemoteConfigString(for: key)
     }
 
-    public func getNoticePopupInfo() -> NoticePopupInfo? {
-        splashRepository.getNoticePopupInfo()
+    /// 노출해야 할 공지만 반환합니다. 비어 있거나 이미 확인한 일회성 공지는 `nil`입니다.
+    public func getNoticeToShow() -> NoticePopupInfo? {
+        guard let notice = splashRepository.getNoticePopupInfo(),
+              !notice.isEmpty else {
+            return nil
+        }
+
+        if let oneTimeID = notice.oneTimeID,
+           splashRepository.hasSeenNotice(id: oneTimeID) {
+            return nil
+        }
+
+        return notice
+    }
+
+    /// 업데이트 팝업 일러스트 URL입니다. 비어 있거나 유효하지 않으면 `nil`입니다.
+    public func getUpdatePopupImageURL() -> URL? {
+        PopupImageURL.validated(
+            splashRepository.getRemoteConfigString(for: .updatePopupImageURL)
+        )
+    }
+
+    public func markNoticeAsSeen(_ notice: NoticePopupInfo) {
+        guard let oneTimeID = notice.oneTimeID else { return }
+        splashRepository.markNoticeAsSeen(id: oneTimeID)
     }
 
     public func getAuthSession() -> AuthSession? {

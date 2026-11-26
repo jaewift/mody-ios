@@ -6,9 +6,10 @@
 //
 
 public enum RemoteConfigKeys: String {
-    case forceUpdate = "force_update_flag"
+    case recommendUpdate = "recommend_update_flag"
     case guestLogin = "guest_login_flag"
     case notice = "notice_flag"
     case minimumSupportedVersion = "minimum_supported_version"
     case appStoreURL = "app_store_url"
+    case updatePopupImageURL = "update_popup_image_url"
 }

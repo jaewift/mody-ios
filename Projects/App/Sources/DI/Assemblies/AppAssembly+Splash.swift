@@ -14,6 +14,7 @@ import CoreKeyChainStorage
 import CoreKeyChainStorageInterface
 import CoreAnalyticsInterface
 import CoreAuthInterface
+import CoreModyImageInterface
 
 extension AppAssembly {
     func assembleSplashFeature(in container: Container) {
@@ -39,11 +40,13 @@ extension AppAssembly {
             let splashUseCase: SplashUseCase = resolver.resolve()
             let authUseCase: AuthUseCaseProtocol = resolver.resolve()
             let analyticsUseCase: AnalyticsUseCaseProtocol = resolver.resolve()
+            let imageLoader: RemoteImageLoading = resolver.resolve()
 
             return SplashFeature(
                 splashUseCase: splashUseCase,
                 authUseCase: authUseCase,
-                analyticsUseCase: analyticsUseCase
+                analyticsUseCase: analyticsUseCase,
+                imageLoader: imageLoader
             ) { [weak router] route in
                 router?.route(from: route)
             }
