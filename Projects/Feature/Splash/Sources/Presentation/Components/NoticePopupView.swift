@@ -94,9 +94,9 @@ private extension NoticePopupView {
             style: .c2,
             color: .gray9,
             lineLimit: nil,
-            alignment: .leading
+            alignment: .center
         )
-        .greedyWidth(.leading)
+        .greedyWidth(.center)
     }
 
     var isConfirmationEnabled: Bool {
