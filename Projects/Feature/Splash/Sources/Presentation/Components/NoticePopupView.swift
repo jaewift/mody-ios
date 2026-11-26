@@ -15,6 +15,7 @@ struct NoticePopupView: View {
     private let info: NoticePopupInfo
     private let image: UIImage?
     private let action: () -> Void
+    @State private var contentsHeight: CGFloat = 0
 
     init(
         info: NoticePopupInfo,
@@ -54,17 +55,17 @@ private extension NoticePopupView {
                 )
                 .greedyWidth()
 
+                // 짧은 본문은 내용 높이만큼만 차지하고, 최대 높이를 넘을 때만 스크롤합니다.
                 ScrollView {
-                    MText(
-                        info.contents ?? "-",
-                        style: .c2,
-                        color: .gray9,
-                        lineLimit: nil,
-                        alignment: .leading
-                    )
-                    .greedyWidth(.leading)
+                    contentsText
+                        .onGeometryChange(for: CGFloat.self) { proxy in
+                            proxy.size.height
+                        } action: { height in
+                            contentsHeight = height
+                        }
                 }
-                .frame(maxHeight: Self.textContentsMaxHeight)
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: min(contentsHeight, Self.textContentsMaxHeight))
             }
             .padding(.horizontal, 18)
             .padding(.top, 28)
@@ -85,6 +86,17 @@ private extension NoticePopupView {
         .background(Color.systemWhite)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .hPadding(36)
+    }
+
+    var contentsText: some View {
+        MText(
+            info.contents ?? "-",
+            style: .c2,
+            color: .gray9,
+            lineLimit: nil,
+            alignment: .leading
+        )
+        .greedyWidth(.leading)
     }
 
     var isConfirmationEnabled: Bool {
