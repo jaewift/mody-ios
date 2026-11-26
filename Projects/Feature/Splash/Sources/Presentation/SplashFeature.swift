@@ -47,7 +47,8 @@ public struct SplashFeature {
     public struct State: Equatable {
         public enum AlertCase: Equatable {
             case error(NetworkError)
-            case forceUpdate(image: UIImage?)
+            /// 바깥 배경을 눌러 닫을 수 있는 권장 업데이트 팝업입니다.
+            case recommendUpdate(image: UIImage?)
             case minimumSupportedVersion
             case notice(NoticePopupInfo, image: UIImage?)
         }
@@ -71,8 +72,8 @@ public struct SplashFeature {
         case userInfoFetched(UserInfo)
         case userInfoFetchFailed
         case setUpRemoteConfig
-        case checkForceUpdate
         case checkMinimumSupportedVersion
+        case checkRecommendUpdate
         case checkNotice
         case alertAction(AlertFeature.Action)
         case showAlert(State.AlertCase)
@@ -95,25 +96,8 @@ public struct SplashFeature {
             case .setUpRemoteConfig:
                 return .run { send in
                     await splashUseCase.fetchAndActivate()
-                    await send(.checkForceUpdate)
+                    await send(.checkMinimumSupportedVersion)
                 }
-            case .checkForceUpdate:
-                let needForceUpdate = splashUseCase.getRemoteConfigBool(for: .forceUpdate)
-
-                if needForceUpdate {
-                    state.appStoreURLString = splashUseCase.getRemoteConfigString(for: .appStoreURL)
-
-                    guard let imageURL = splashUseCase.getUpdatePopupImageURL() else {
-                        return .send(.showAlert(.forceUpdate(image: nil)))
-                    }
-
-                    return .run { send in
-                        let image = await loadPopupImage(from: imageURL)
-                        await send(.showAlert(.forceUpdate(image: image)))
-                    }
-                }
-                
-                return .send(.checkMinimumSupportedVersion)
             case .checkMinimumSupportedVersion:
                 let targetVersion = splashUseCase.getRemoteConfigString(for: .minimumSupportedVersion)
                 
@@ -126,8 +110,16 @@ public struct SplashFeature {
                     state.appStoreURLString = splashUseCase.getRemoteConfigString(for: .appStoreURL)
                     return .send(.showAlert(.minimumSupportedVersion))
                 }
-                
-                return .send(.checkNotice)
+
+                return .send(.checkRecommendUpdate)
+            case .checkRecommendUpdate:
+                // 한 번만 보기 없이 플래그가 켜져 있는 동안 실행할 때마다 노출합니다.
+                guard splashUseCase.getRemoteConfigBool(for: .recommendUpdate) else {
+                    return .send(.checkNotice)
+                }
+
+                state.appStoreURLString = splashUseCase.getRemoteConfigString(for: .appStoreURL)
+                return showRecommendUpdateAlert()
             case .checkNotice:
                 guard let notice = splashUseCase.getNoticeToShow() else {
                     return .send(.healthCheck)
@@ -141,6 +133,16 @@ public struct SplashFeature {
                 return .run { send in
                     let image = await loadPopupImage(from: imageURL)
                     await send(.showAlert(.notice(notice, image: image)))
+                }
+            case .alertAction(.scrimTapped):
+                // 권장 업데이트만 바깥 배경으로 닫을 수 있고, 닫으면 다음 단계(공지 확인)로 이어갑니다.
+                guard case .recommendUpdate = state.alertCase else {
+                    return .none
+                }
+
+                return .run { send in
+                    await send(.alertAction(.dismiss))
+                    await send(.checkNotice)
                 }
             case .alertAction:
                 return .none
@@ -213,6 +215,18 @@ private extension SplashFeature {
             return .serverHealthChecked(isStable)
         } catch {
             return .showAlert(.error(error as? NetworkError ?? .unknown))
+        }
+    }
+
+    /// 권장 업데이트 팝업을 띄웁니다. 일러스트 URL이 있으면 이미지를 미리 받아 둔 뒤 노출합니다.
+    func showRecommendUpdateAlert() -> Effect<Action> {
+        guard let imageURL = splashUseCase.getUpdatePopupImageURL() else {
+            return .send(.showAlert(.recommendUpdate(image: nil)))
+        }
+
+        return .run { send in
+            let image = await loadPopupImage(from: imageURL)
+            await send(.showAlert(.recommendUpdate(image: image)))
         }
     }
 
